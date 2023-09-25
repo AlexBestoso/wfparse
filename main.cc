@@ -15,10 +15,10 @@
 
 #include "./WavefrontImport.h"
 
-int main(){
+int main(int argc, char *argv[]){
 	// Import Object
 	WavefrontImport objImport;
-	if(!objImport.import("cube.obj")){
+	if(!objImport.import(argv[1])){
 		printf("Failed to import object.\n");
 		return 1;
 	}else{
@@ -29,7 +29,7 @@ int main(){
 	printf("Object Count : %ld\n", objImport.objCount);
 	// Enumerate first entry using the built in struct
 	printf("---------------\nObject Vertecies: \n");
-	for(int i=0; i<objImport.objCount; i++){
+	for(int i=0; i<10; i++){
 		printf("Section %d:\n", i);
 		printf("\tVertex coords  : (%f, %f, %f)\n", objImport.obj[i].vertex[0], objImport.obj[i].vertex[1], objImport.obj[i].vertex[2]);
 		printf("\tTexture coords : (%f, %f)\n", objImport.obj[i].texture[0], objImport.obj[i].texture[1]);

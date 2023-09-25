@@ -4,6 +4,12 @@ typedef struct obj_data{
 	float normal[3];
 }obj_data_t;
 
+typedef struct obj_face_data{
+	int vector;
+	int texture;
+	int normal;
+}obj_face_data_t;
+
 class WavefrontImport{
 	private:
 		size_t vertexCount = 0;
@@ -26,7 +32,10 @@ class WavefrontImport{
 		float *vertexArray = NULL; 
 		float *textureArray = NULL;
 		float *normalArray = NULL;
+		
 		int *faceArray = NULL;
+		int *faceArrayLens = NULL;
+		int faceArraySize = 0;
 
 
 		std::string *textures = NULL;
@@ -196,18 +205,26 @@ class WavefrontImport{
 		}
 
 		void parseFaceIndecies(void){
-			int k = 0;
-			for(int i=0; i<faces[0].length(); i++){
-				if(faces[0][i] == ' '){
-					faceMultiplyer++;
+			faceArrayLens = new int[faceCount];
+			faceArraySize = 0;
+			for(int j=0; j<faceCount; j++){
+				faceMultiplyer = 0;
+				for(int i=0; i<faces[j].length(); i++){
+					if(faces[j][i] == ' '){
+						faceMultiplyer++;
+					}
 				}
+				faceArrayLens[j] = faceMultiplyer;
+				faceArraySize += 3*faceMultiplyer;
 			}
 
-			faceArray = new int[faceCount*3*faceMultiplyer];
+			;
+			faceArray = new int[faceArraySize];
+			int k = 0;
                         for(int i=0; i<faceCount; i++){
                                 std::string grab = "";
                                 for(int j=0; j<faces[i].length(); j++){
-					if(k >= faceCount*faceMultiplyer*3)
+					if(k >= faceArraySize)
                                         	break;
                                         if((faces[i][j] == ' ' || faces[i][j] == '/') && grab.length() != 0){
                                                 faceArray[k] = std::stoi(grab);
@@ -217,28 +234,80 @@ class WavefrontImport{
                                                 grab += faces[i][j];
                                         }
                                 }
-				if(k >= faceCount*faceMultiplyer*3)
+				if(k >= faceArraySize)
                                         break;
                         }
 			delete[] faces;
+
 		}
 
 		void createGlBuffer(void){
-			glObjBufferSize = 8 * faceCount * (faceMultiplyer+2);
+			glObjBufferSize = 0;
+			for(int i=0; i<faceCount; i++){
+				int val = (faceArrayLens[i]%3) == 1 ? 2 : (faceArrayLens[i]%3) == 2 ? 1 : 0;
+				glObjBufferSize += 8*(faceArrayLens[i]+val);
+			}
                 	glObjBuffer = new float[glObjBufferSize];
-
 			int tracker = 0;
-			int infrenceTrack = 0;
-			for(int i=0; i<faceCount*faceMultiplyer*3; i++){
+			int faceTrack = 0;
+			for(int i=0; i<faceCount; i++){
+				int vec_a=0, vec_b=0, vec_c=0;
+				int tex_a=0, tex_b=0, tex_c=0;
+				int norm_a=0, norm_b=0, norm_c=0;
+				int vec=0, tex=0, norm=0;
+				int correct = faceArrayLens[i] % 3;
+				for(int j=0; j<3*faceArrayLens[i]; j++){
+					vec_c = vec_b;
+					tex_c = tex_b;
+					norm_c = norm_b;
 
-				if((i%4) == 1){
-					// Get Previous
-					i -= 3;
-					int vec = (faceArray[i] - 1)*vertexMultiplyer;
-                                        int tex = (faceArray[i+1] - 1)*textureMultiplyer;
-                                        int norm = (faceArray[i+2] - 1)*normalMultiplyer;
+					vec_b = vec_a;
+					tex_b = tex_a;
+					norm_b = norm_a;
 
-                                        glObjBuffer[tracker] = vertexArray[vec];
+					vec_a = vec;
+					tex_a = tex;
+					norm_a = norm;
+
+					vec = (faceArray[faceTrack] - 1)*vertexMultiplyer;
+                                        tex = (faceArray[faceTrack+1] - 1)*textureMultiplyer;
+                                        norm = (faceArray[faceTrack+2] - 1)*normalMultiplyer;
+
+					faceTrack+=3;
+
+					if(correct == 1 && j-3 >= faceArrayLens[i] || correct == 2 && j-6 >=faceArrayLens[i]){
+						break;
+					
+					}
+					if(correct == 0){
+						printf("In thirds %d %d\n", i, j);
+						printf("\t%f, %f, %f\n", vertexArray[vec], vertexArray[vec+1], vertexArray[vec+1]);
+					}
+					
+					glObjBuffer[tracker] = vertexArray[vec];
+                                        glObjBuffer[tracker+1] = vertexArray[vec+1];
+                                        glObjBuffer[tracker+2] = vertexArray[vec+2];
+                                        glObjBuffer[tracker+3] = textureArray[tex];
+                                        glObjBuffer[tracker+4] = textureArray[tex+1];
+                                        glObjBuffer[tracker+5] = normalArray[norm];
+                                        glObjBuffer[tracker+6] = normalArray[norm+1];
+                                        glObjBuffer[tracker+7] = normalArray[norm+2];
+                                        j+=2;
+                                        tracker +=8;
+				}
+
+				if(correct == 1){ // We have one vertex placed and need to place 2 more.
+					glObjBuffer[tracker] = vertexArray[vec_a];
+                                        glObjBuffer[tracker+1] = vertexArray[vec_a+1];
+                                        glObjBuffer[tracker+2] = vertexArray[vec_a+2];
+                                        glObjBuffer[tracker+3] = textureArray[tex_a];
+                                        glObjBuffer[tracker+4] = textureArray[tex_a+1];
+                                        glObjBuffer[tracker+5] = normalArray[norm_a];
+                                        glObjBuffer[tracker+6] = normalArray[norm_a+1];
+                                        glObjBuffer[tracker+7] = normalArray[norm_a+2];
+					tracker +=8;
+
+					glObjBuffer[tracker] = vertexArray[vec];
                                         glObjBuffer[tracker+1] = vertexArray[vec+1];
                                         glObjBuffer[tracker+2] = vertexArray[vec+2];
                                         glObjBuffer[tracker+3] = textureArray[tex];
@@ -247,60 +316,31 @@ class WavefrontImport{
                                         glObjBuffer[tracker+6] = normalArray[norm+1];
                                         glObjBuffer[tracker+7] = normalArray[norm+2];
 					tracker += 8;
-					i+=3;
 
-					// Apply current
-					vec = (faceArray[i] - 1)*vertexMultiplyer;
-                                        tex = (faceArray[i+1] - 1)*textureMultiplyer;
-                                        norm = (faceArray[i+2] - 1)*normalMultiplyer;
-
-                                        glObjBuffer[tracker] = vertexArray[vec];
-                                        glObjBuffer[tracker+1] = vertexArray[vec+1];
-                                        glObjBuffer[tracker+2] = vertexArray[vec+2];
-                                        glObjBuffer[tracker+3] = textureArray[tex];
-                                        glObjBuffer[tracker+4] = textureArray[tex+1];
-                                        glObjBuffer[tracker+5] = normalArray[norm];
-                                        glObjBuffer[tracker+6] = normalArray[norm+1];
-                                        glObjBuffer[tracker+7] = normalArray[norm+2];
-                                        tracker += 8;
-
-					// Apply first vertex of previous triangle.
-					i -= 9;
-					vec = (faceArray[i] - 1)*vertexMultiplyer;
-                                        tex = (faceArray[i+1] - 1)*textureMultiplyer;
-                                        norm = (faceArray[i+2] - 1)*normalMultiplyer;
-
-                                        glObjBuffer[tracker] = vertexArray[vec];
-                                        glObjBuffer[tracker+1] = vertexArray[vec+1];
-                                        glObjBuffer[tracker+2] = vertexArray[vec+2];
-                                        glObjBuffer[tracker+3] = textureArray[tex];
-                                        glObjBuffer[tracker+4] = textureArray[tex+1];
-                                        glObjBuffer[tracker+5] = normalArray[norm];
-                                        glObjBuffer[tracker+6] = normalArray[norm+1];
-                                        glObjBuffer[tracker+7] = normalArray[norm+2];
-                                        tracker += 8;
-					i += 9;
-
-					// Restore Flow
-					i+=2;
-
-				}else{
-					int vec = (faceArray[i] - 1)*vertexMultiplyer;
-					int tex = (faceArray[i+1] - 1)*textureMultiplyer;
-					int norm = (faceArray[i+2] - 1)*normalMultiplyer;
-
-					glObjBuffer[tracker] = vertexArray[vec];
-					glObjBuffer[tracker+1] = vertexArray[vec+1];
-					glObjBuffer[tracker+2] = vertexArray[vec+2];
-					glObjBuffer[tracker+3] = textureArray[tex];
-					glObjBuffer[tracker+4] = textureArray[tex+1];
-					glObjBuffer[tracker+5] = normalArray[norm];
-					glObjBuffer[tracker+6] = normalArray[norm+1];
-					glObjBuffer[tracker+7] = normalArray[norm+2];
-					i+=2;
-					tracker +=8;
+					glObjBuffer[tracker] = vertexArray[vec_c];
+                                        glObjBuffer[tracker+1] = vertexArray[vec_c+1];
+                                        glObjBuffer[tracker+2] = vertexArray[vec_c+2];
+                                        glObjBuffer[tracker+3] = textureArray[tex_c];
+                                        glObjBuffer[tracker+4] = textureArray[tex_c+1];
+                                        glObjBuffer[tracker+5] = normalArray[norm_c];
+                                        glObjBuffer[tracker+6] = normalArray[norm_c+1];
+                                        glObjBuffer[tracker+7] = normalArray[norm_c+2];
+					tracker += 8;
 				}
-				infrenceTrack++;
+
+				if(correct == 2){
+					printf("Correct 2 by adding 1\n");
+					glObjBuffer[tracker] = vertexArray[vec_b];
+                                        glObjBuffer[tracker+1] = vertexArray[vec_b+1];
+                                        glObjBuffer[tracker+2] = vertexArray[vec_b+2];
+                                        glObjBuffer[tracker+3] = textureArray[tex_b];
+                                        glObjBuffer[tracker+4] = textureArray[tex_b+1];
+                                        glObjBuffer[tracker+5] = normalArray[norm_b];
+                                        glObjBuffer[tracker+6] = normalArray[norm_b+1];
+                                        glObjBuffer[tracker+7] = normalArray[norm_b+2];
+                                        tracker += 8;
+				}
+
 			}
 
 
@@ -314,6 +354,7 @@ class WavefrontImport{
 	public:
 		size_t objCount = 0;
 		obj_data_t *obj = NULL;
+
 		size_t glObjBufferSize = 0;
 		float *glObjBuffer = NULL;
 
@@ -341,15 +382,25 @@ class WavefrontImport{
 			}
 			close(fd);
 
+			printf("Counting Fields.\n");
 			countFields();
 
+			printf("Allocating field strings.\n");
 			allocateFieldStrings();
 
+			printf("Parsing Vertex Floats.\n");
 			parseVertexFloats();
+			
+			printf("Parsing Texture Floats.\n");
 			parseTextureFloats();
+			
+			printf("Parsing noramls floats.\n");
 			parseNormalFloats();
+
+			printf("Parsing face indecies.\n");
 			parseFaceIndecies();
 
+			printf("Creating the buffer.\n");
 			createGlBuffer();
 			delete[] this->objFileData;
 
