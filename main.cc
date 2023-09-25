@@ -25,9 +25,11 @@ int main(){
 		printf("Importation successful!\n");	
 	}
 
+
+	printf("Object Count : %ld\n", objImport.objCount);
 	// Enumerate first entry using the built in struct
 	printf("---------------\nObject Vertecies: \n");
-	for(int i=0; i<1; i++){
+	for(int i=0; i<objImport.objCount; i++){
 		printf("Section %d:\n", i);
 		printf("\tVertex coords  : (%f, %f, %f)\n", objImport.obj[i].vertex[0], objImport.obj[i].vertex[1], objImport.obj[i].vertex[2]);
 		printf("\tTexture coords : (%f, %f)\n", objImport.obj[i].texture[0], objImport.obj[i].texture[1]);
