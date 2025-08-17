@@ -17,102 +17,180 @@
 
 WavefrontImport objImport;
 
-int commandParse(int argc, char *argv[]){
-	for(int i=0; i<argc; i++){
-		if(!strncmp(argv[i], "--vertex", 8)){
-			return 0;
-		}
+size_t main_command_count = 6;
+std::string main_command_list[] = {
+	"--help",
+	"--full-dump",
+	"--obj-dump",
+	"--mtl-dump",
+	"--buf-gen",
+	"--buf-gen-help"
+};
+std::string main_command_help[] = {
+	"Display this help menu.",
+	"Dump all .obj and .mtl data.",
+	"Dump ONLY .obj data.",
+	"Dump ONLY .mtl data.",
+	"Generate a data buffer.",
+	"Displays the help menu for --buf-gen"
+};
+
+int parseMainCommands(const char *cmd){
+	for(int i=0; i<main_command_count; i++){
+		if(!strncmp(cmd, main_command_list[i].c_str(), main_command_list[i].length())) return i;
 	}
 	return -1;
 }
 
-void printHelp(int argc, char *argv[]){
-	printf("======== Manual =========\n");
-	printf("Usage %s --help\n", argv[0]);
-       	printf("Usage %s <file.obj> [options]\n", argv[0]);
-
-	printf("No Options: By providing no potions, this program will just dump all the data in a readable format.\n");
-	printf("--color-padding : pad your result with bytes for color\n");
-	printf("--vertex [format(optional)]: Displays only vertex data.\n");
-	printf("\t--javascript : prints vertex data as a javascript array\n");
+void printUsage(){
+	printf("Usage %s <file.obj> [options]\n", "wfparse");
+        printf("Usage --help\n");
+	printf("===== manual =====\n");
+	for(int i=0; i<main_command_count; i++){
+		printf("%s : %s\n", main_command_list[i].c_str(), main_command_help[i].c_str());
+	}
 }
 
-void printVertecies(int argc, char *argv[]){
-	if(argc <= 3){
-		for(int i=0; i<objImport.objCount; i++){
-                	printf("Section %d:\n", i);
-                	printf("\tVertex coords  : (%f, %f, %f)\n", objImport.obj[i].vertex[0], objImport.obj[i].vertex[1], objImport.obj[i].vertex[2]);
-		}
-		return;
-	}
+size_t bufGen_command_count = 5;
+std::string bufGen_command_list[] = {
+	"--help",
+	"--format=",
+	"--javascript",
+	"--float-array",
+	"--raw-dump"
+};
+std::string bufGen_command_help[] = {
+        "Display this help menu.",
+        "Set the format of your output data. IE ; vnt to get just vertex normal and textures.\n\t0 v=vertex, only one\n\t1 t=texture, only one\n\t2 n=normal, only one\n\t3 a=color, sourced from material Na\n\t4 d=color, sourced from material Nd\n\t5 s=color, sourced from material Ns\n\t6 e=color, sourced from material Ne\n\t7 1-4=padding, add x digits of 0 padding. min:1, max:4. More than one supported.\n\tEMPTY=vtn. an empty format gives vertex, texture, normal",
+        "Output as a javascript matrix array",
+        "Output as a float array",
+        "Output the data as a raw string of floats."
+};
 
-	int colorPadding=0;
-	for(int i=0; i<argc; i++){
-		if(!strncmp(argv[i], "--color-padding", 15)){
-			colorPadding = 1;
-			break;
+std::string globFormat="vtn";
+int parseBufGenCommands(const char *cmd){
+        for(int i=0; i<bufGen_command_count; i++){
+                if(!strncmp(cmd, bufGen_command_list[i].c_str(), bufGen_command_list[i].length())) return i;
+		if(strlen(cmd) >= 9){
+			std::string test = "";
+			for(int j=0; j<9;j++) test += cmd[j];
+				if(!strncmp(test.c_str(), "--format=", 9)){
+					globFormat = "";
+					for(int k=9; k<strlen(cmd); k++){
+						globFormat+=cmd[k];
+					}
+					return 1;
+				}
 		}
 	}
+        return -1;
+}
+void printBufGenUsage(){
+	printf("Usage %s [options]\n", "--buf-gen");
+        printf("Usage : --help\n");
+	printf("===== manual =====\n");
+	for(int i=0; i<bufGen_command_count; i++){
+		printf("%s : %s\n", bufGen_command_list[i].c_str(), bufGen_command_help[i].c_str());
+	}
+}
 
-	if(!strncmp(argv[3], "--javascript", 12)){
-		printf("\n\n====JAVASCRIPT OUTPUT =====\n[");
-		float r=0.5, g=0.2, b=0.7;
-		for(int i=0; i<objImport.objCount; i++){
-			if(colorPadding == 1){
-	                        printf("[%f, %f, %f,  %f, %f, %f], ", objImport.obj[i].vertex[0], objImport.obj[i].vertex[1], objImport.obj[i].vertex[2], r, g, b);
-			}else{
-	                        printf("[%f, %f, %f], ", objImport.obj[i].vertex[0], objImport.obj[i].vertex[1], objImport.obj[i].vertex[2]);
+bool bufGen(int argc, char *argv[]){
+	if(argc < 3) return false;
+	std::string subarg = "--raw-dump";
+	std::string secondArg = "";
+	if(argc >= 4){
+		subarg = argv[3];
+	}
+	if(argc >= 5){
+		secondArg = argv[4];
+	}
+	int result = parseBufGenCommands(subarg.c_str());
+	int result2=parseBufGenCommands(secondArg.c_str());
+	int switchCtrl=result;
+	if(switchCtrl == 1 && result2 != 1 && result2 != -1)
+		switchCtrl = result2;
+	
+	switch(switchCtrl){
+		default:
+			printBufGenUsage();
+			return false;
+		case 2: // --javascript
+			objImport.genBuffer_format(globFormat.c_str());
+			printf("\nvar WF_OBJECT = [");
+			for(int i=0; i<objImport.gl_buffer_size; i++){
+				if((i%objImport.gl_stride) == 0) printf("[");
+				
+				printf("%f, ", objImport.gl_buffer[i]);
+
+				if((i%objImport.gl_stride) == objImport.gl_stride-1) printf("],");
 			}
-                }
-		printf("];\n\n====JAVASCRIPT OUTPUT =====");
-	}
-}
+			printf("];\n");
 
+			break;
+		case 3: // --float-array
+			objImport.genBuffer_format(globFormat.c_str());
+                        printf("\nsize_t WF_OBJECT_SIZE=%ld;\nfloat WF_OBJECT[%ld] = {", objImport.gl_buffer_size, objImport.gl_buffer_size);
+                        for(int i=0; i<objImport.gl_buffer_size; i++){
+                                if((i%objImport.gl_stride) == 0) printf("\n\t");
+
+                                if(i == objImport.gl_buffer_size-1)
+	                                printf("%f", objImport.gl_buffer[i]);
+				else
+	                                printf("%f, ", objImport.gl_buffer[i]);
+
+                        }
+                        printf("\n};\n");
+			break;
+		case 4: //--raw-dump
+			objImport.genBuffer_format(globFormat.c_str());
+			printf("Raw Buffer : \n");
+			for(int i=0; i<objImport.gl_buffer_size; i++){
+				if((i%objImport.gl_stride) == 0) printf("\n");
+				printf("%f ", objImport.gl_buffer[i]);
+			}
+			printf("\n\n");
+
+			break;
+
+	}
+	return true;
+}
 int main(int argc, char *argv[]){
 	if(argc < 2){
-		printf("Usage %s --help\n", argv[0]);
-		printf("Usage %s <file.obj> [options]\n", argv[0]);
+		printUsage();
 		return 1;
 	}
 	
-	if(!strncmp(argv[1], "--help", 6)){
-		printHelp(argc, argv);
-		return 0;
-	}
 
-	// Import Object
 	if(!objImport.import(argv[1])){
-		printf("Failed to import object.\n");
+		printf("[E] Failed to import file \n");
+		printUsage();
 		return 1;
-	}else{
-		printf("Importation successful!\n");	
 	}
 
-	if(argc > 2){
-		switch(commandParse(argc, argv)){
-			case 0: // --vertex
-				printVertecies(argc, argv);
-				return 0;
-			default:
-				printf("Invalid command.\n");
-				return 1;
-		}
+		
+	std::string cmd = "";
+	if(argc > 2) cmd = argv[2];
+	switch(parseMainCommands(cmd.c_str())){
+		case 0: // --help
+			printUsage();
+			break;
+        	case 2: //--obj-dump
+			objImport.dumpObjFile();
+			break;
+		case 3: //--mtl-dump
+			objImport.dumpMtlFile();
+			break;
+		case 4: //--buf-gen
+			bufGen(argc, argv);
+			break;
+		case 5: //--buf-gen-help
+			printBufGenUsage();
+			break;
+		default: // --full-dump
+			objImport.dumpObjFile();
+			objImport.dumpMtlFile();
+			break;
 	}
-
-	printf("Object Count : %ld\n", objImport.objCount);
-	// Enumerate first entry using the built in struct
-	printf("---------------\nObject Vertecies: \n");
-	for(int i=0; i<objImport.objCount; i++){
-		printf("Section %d:\n", i);
-		printf("\tVertex coords  : (%f, %f, %f)\n", objImport.obj[i].vertex[0], objImport.obj[i].vertex[1], objImport.obj[i].vertex[2]);
-		printf("\tTexture coords : (%f, %f)\n", objImport.obj[i].texture[0], objImport.obj[i].texture[1]);
-		printf("\tNormal coords : (%f, %f, %f)\n", objImport.obj[i].normal[0], objImport.obj[i].normal[1], objImport.obj[i].normal[2]);
-	}printf("------------------\n");
-	
-	// Enumerate the same data but directly from the array. This array is what you pass to openGL.
-	printf("Direct Buffer Object Vertecies : \n");
-	for(int i=0; i<8; i++){
-		printf("%f ", objImport.glObjBuffer[i]);
-	}printf("\n");
-	return 0;
+		return 0;
 }

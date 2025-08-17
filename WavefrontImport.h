@@ -1,440 +1,348 @@
-typedef struct obj_data{
-	float vertex[3];
-	float texture[2];
-	float normal[3];
-}obj_data_t;
+#include "./obj.class.h"
 
-typedef struct obj_face_data{
-	int vector;
-	int texture;
-	int normal;
-}obj_face_data_t;
+#define WF_FMT_V 0
+#define WF_FMT_T 1
+#define WF_FMT_N 2
+#define WF_FMT_A 3
+#define WF_FMT_D 4
+#define WF_FMT_S 5
+#define WF_FMT_E 6
+#define WF_FMT_1 7
+#define WF_FMT_2 8
+#define WF_FMT_3 9
+#define WF_FMT_4 10
+#define WF_FMT_KD 11
+
 
 class WavefrontImport{
 	private:
-		size_t vertexCount = 0;
-		int vertexMultiplyer = 0;
-		
-		size_t textureCount = 0;
-		int textureMultiplyer = 0;
-		
-		size_t normalCount = 0;
-		int normalMultiplyer = 0;
-
-		size_t faceCount = 0;
-		int faceMultiplyer = 0;
-		
-		size_t objFileSize = 0;
-		char *objFileData = NULL;
-		
-		int fd;
-
-		float *vertexArray = NULL; 
-		float *textureArray = NULL;
-		float *normalArray = NULL;
-		
-		int *faceArray = NULL;
-		int *faceArrayLens = NULL;
-		int faceArraySize = 0;
-
-
-		std::string *textures = NULL;
-                std::string *normals = NULL;
-                std::string *vertexs = NULL;
-                std::string *faces = NULL;
-
-		void countFields(void){
-			for(int i=0; i<objFileSize; i++){
-				if((i!=0) && objFileData[i] == 'v' && objFileData[i+1] =='t' && objFileData[i-1] == '\n'){
-					textureCount++;
-				}else if((i!=0) && objFileData[i] == 'v' && objFileData[i+1] =='n' && objFileData[i-1] == '\n'){
-                                        normalCount++;
-                                }else if((i!=0) && objFileData[i] == 'v' && objFileData[i-1] == '\n'){
-					vertexCount++;
-				}else if((i!=0) && objFileData[i] == 'f' && objFileData[i-1] == '\n'){
-                                        faceCount++;
-                                }
+		int openAndRead(const char *target, int *fd, char *out, size_t out_size){
+			if(!(fd[0] = open(target, O_RDONLY))){
+				printf("Failed to read '%s'", target);
+				return 0;
 			}
-		
-		}
-
-		void allocateFieldStrings(void){
-			textures = new std::string[textureCount];
-                        normals = new std::string[normalCount];
-                        vertexs = new std::string[vertexCount];
-                        faces = new std::string[faceCount];
-
-			int t=0, n=0, v=0, f=0;
-                        for(int i=0; i<objFileSize; i++){
-                                if((i!=0) && objFileData[i] == 'v' && objFileData[i+1] =='t' && objFileData[i-1] == '\n'){
-                                        textures[t] = "";
-                                        i+=3;
-                                        int j = 0;
-                                        while((i+j) < objFileSize && objFileData[i+j] != '\n'){
-                                                textures[t] += objFileData[i+j];
-                                                j++;
-                                        }
-                                        i+=j;
-                                        textures[t]+=' ';
-                                        t++;
-                                }else if((i!=0) && objFileData[i] == 'v' && objFileData[i+1] =='n' && objFileData[i-1] == '\n'){
-                                        normals[n] = "";
-                                        i+=3;
-                                        int j = 0;
-                                        while((i+j) < objFileSize && objFileData[i+j] != '\n'){
-                                                normals[n] += objFileData[i+j];
-                                                j++;
-                                        }
-                                        i+=j;
-                                        normals[n] += ' ';
-                                        n++;
-                                }else if((i!=0) && objFileData[i] == 'v' && objFileData[i-1] == '\n'){
-                                        vertexs[v] = "";
-                                        i+=2;
-                                        int j = 0;
-                                        while((i+j) < objFileSize && objFileData[i+j] != '\n'){
-                                                vertexs[v] += objFileData[i+j];
-                                                j++;
-                                        }
-                                        i+=j;
-                                        vertexs[v] += ' ';
-                                        v++;
-                                }else if((i!=0) && objFileData[i] == 'f' && objFileData[i-1] == '\n'){
-                                        faces[f] = "";
-                                        i+=2;
-                                        int j = 0;
-                                        while((i+j) < objFileSize && objFileData[i+j] != '\n'){
-                                                faces[f] += objFileData[i+j];
-                                                j++;
-                                        }
-                                        i+=j;
-                                        faces[f] += ' ';
-                                        f++;
-                                }
-                        }
-		}
-
-		void parseVertexFloats(void){
-			vertexMultiplyer = 0;
-			for(int i=0; i<vertexs[0].length(); i++){
-				if(vertexs[0][i] == ' '){
-					vertexMultiplyer++;
-				}
+			struct stat st;
+			if(fstat(fd[0], &st)){
+				printf("Failed to get file stats\n");
+				close(fd[0]);
 			}
-
-			vertexArray = new float[vertexCount*vertexMultiplyer];
-			int k = 0;
-                        for(int i=0; i<vertexCount; i++){
-                                std::string grab = "";
-                                for(int j=0; j<vertexs[i].length(); j++){
-                                        if(vertexs[i][j] == ' '){
-						if(k >= vertexCount*vertexMultiplyer)
-							break;
-                                                vertexArray[k] = std::stof(grab);
-                                                grab = "";
-                                                k++;
-                                        }else{
-                                                grab += vertexs[i][j];
-                                        }
-                                }
-				if(k >= vertexCount*vertexMultiplyer)
-                                	break;
-                        }
-			delete[] vertexs;
-		}
-
-		void parseTextureFloats(void){
-			textureMultiplyer = 0;
-			for(int i=0; i<textures[0].length(); i++){
-                                if(textures[0][i] == ' '){
-                                        textureMultiplyer++;
-                                }
-                        }
-
-			textureArray = new float[textureCount*textureMultiplyer];
-
-			int k = 0;
-                        for(int i=0; i<textureCount; i++){
-                                std::string grab = "";
-                                for(int j=0; j<textures[i].length(); j++){
-                                        if(textures[i][j] == ' ' && grab.length() != 0){
-						if(k >= textureCount*textureMultiplyer)
-		                                        break;
-                                                textureArray[k] = std::stof(grab);
-                                                grab = "";
-                                                k++;
-                                        }else{
-                                                grab += textures[i][j];
-                                        }
-                                }
-				if(k >= textureCount*textureMultiplyer)
-                                        break;
-                        }
-
-			delete[] textures;
-		}
-
-		void parseNormalFloats(void){
-			normalMultiplyer = 0;
-			for(int i=0; i<normals[0].length(); i++){
-                                if(normals[0][i] == ' '){
-                                        normalMultiplyer++;
-                                }
-                        }
-
-                	normalArray = new float[normalCount*normalMultiplyer];
+			int ret  = st.st_size;
+			if(ret >= out_size){
+				ret = out_size;
+			}
 			
-			int k = 0;
-                        for(int i=0; i<normalCount; i++){
-                                std::string grab = "";
-                                for(int j=0; j<normals[i].length(); j++){
-					if(k >= normalCount*normalMultiplyer)
-                                        	break;
-                                        if(normals[i][j] == ' ' && grab.length() != 0){
-                                                normalArray[k] = std::stof(grab);
-                                                grab = "";
-                                                k++;
-                                        }else{
-                                                grab += normals[i][j];
-                                        }
-                                }
-				if(k >= normalCount*normalMultiplyer)
-                                        break;
-                        }
-			delete[] normals;
+			memset(out, 0x00, out_size);
+			read(fd[0], out, ret);
+			close(fd[0]);
+			return ret;
 		}
 
-		void parseFaceIndecies(void){
-			faceArrayLens = new int[faceCount];
-			faceArraySize = 0;
-			for(int j=0; j<faceCount; j++){
-				faceMultiplyer = 0;
-				for(int i=0; i<faces[j].length(); i++){
-					if(faces[j][i] == ' '){
-						faceMultiplyer++;
-					}
-				}
-				faceArrayLens[j] = faceMultiplyer;
-				faceArraySize += 3*faceMultiplyer;
+		std::string objFileName="";
+		int objFileFd=-1;
+		char *objFileBuffer=NULL;
+		size_t objFileSize=0;
+	
+		std::string mtlFileName="";
+		int mtlFileFd=-1;
+		bool getRawFileData(const char *targetName){
+			this->objFileName = targetName;
+			size_t nameLength = this->objFileName.length();
+			if(nameLength <= 4) return false;
+			this->mtlFileName = this->objFileName;
+			this->mtlFileName[nameLength-3] = 'm';
+			this->mtlFileName[nameLength-2] = 't';
+			this->mtlFileName[nameLength-1] = 'l';
+			
+			if(this->objFileBuffer){ 
+				free(this->objFileBuffer);
+				this->objFileBuffer = NULL;
 			}
-
-			;
-			faceArray = new int[faceArraySize];
-			int k = 0;
-                        for(int i=0; i<faceCount; i++){
-                                std::string grab = "";
-                                for(int j=0; j<faces[i].length(); j++){
-					if(k >= faceArraySize)
-                                        	break;
-                                        if((faces[i][j] == ' ' || faces[i][j] == '/') && grab.length() != 0){
-                                                faceArray[k] = std::stoi(grab);
-                                                grab = "";
-                                                k++;
-                                        }else{
-                                                grab += faces[i][j];
-                                        }
-                                }
-				if(k >= faceArraySize)
-                                        break;
-                        }
-			delete[] faces;
-
-		}
-
-		void createGlBuffer(void){
-			glObjBufferSize = 0;
-			for(int i=0; i<faceCount; i++){
-				int val = (faceArrayLens[i]%3) == 1 ? 2 : (faceArrayLens[i]%3) == 2 ? 1 : 0;
-				glObjBufferSize += 8*(faceArrayLens[i]+val);
-			}
-                	glObjBuffer = new float[glObjBufferSize];
-			int tracker = 0;
-			int faceTrack = 0;
-			for(int i=0; i<faceCount; i++){
-				int vec_a=0, vec_b=0, vec_c=0;
-				int tex_a=0, tex_b=0, tex_c=0;
-				int norm_a=0, norm_b=0, norm_c=0;
-				int vec=0, tex=0, norm=0;
-				int correct = faceArrayLens[i] % 3;
-				for(int j=0; j<3*faceArrayLens[i]; j++){
-					vec_c = vec_b;
-					tex_c = tex_b;
-					norm_c = norm_b;
-
-					vec_b = vec_a;
-					tex_b = tex_a;
-					norm_b = norm_a;
-
-					vec_a = vec;
-					tex_a = tex;
-					norm_a = norm;
-
-					vec = (faceArray[faceTrack] - 1)*vertexMultiplyer;
-                                        tex = (faceArray[faceTrack+1] - 1)*textureMultiplyer;
-                                        norm = (faceArray[faceTrack+2] - 1)*normalMultiplyer;
-
-					faceTrack+=3;
-
-					if(correct == 1 && j-3 >= faceArrayLens[i] || correct == 2 && j-6 >=faceArrayLens[i]){
-						break;
-					
-					}
-					if(correct == 0){
-						printf("In thirds %d %d\n", i, j);
-						printf("\t%f, %f, %f\n", vertexArray[vec], vertexArray[vec+1], vertexArray[vec+1]);
-					}
-					
-					glObjBuffer[tracker] = vertexArray[vec];
-                                        glObjBuffer[tracker+1] = vertexArray[vec+1];
-                                        glObjBuffer[tracker+2] = vertexArray[vec+2];
-                                        glObjBuffer[tracker+3] = textureArray[tex];
-                                        glObjBuffer[tracker+4] = textureArray[tex+1];
-                                        glObjBuffer[tracker+5] = normalArray[norm];
-                                        glObjBuffer[tracker+6] = normalArray[norm+1];
-                                        glObjBuffer[tracker+7] = normalArray[norm+2];
-                                        j+=2;
-                                        tracker +=8;
-				}
-
-				if(correct == 1){ // We have one vertex placed and need to place 2 more.
-					glObjBuffer[tracker] = vertexArray[vec_a];
-                                        glObjBuffer[tracker+1] = vertexArray[vec_a+1];
-                                        glObjBuffer[tracker+2] = vertexArray[vec_a+2];
-                                        glObjBuffer[tracker+3] = textureArray[tex_a];
-                                        glObjBuffer[tracker+4] = textureArray[tex_a+1];
-                                        glObjBuffer[tracker+5] = normalArray[norm_a];
-                                        glObjBuffer[tracker+6] = normalArray[norm_a+1];
-                                        glObjBuffer[tracker+7] = normalArray[norm_a+2];
-					tracker +=8;
-
-					glObjBuffer[tracker] = vertexArray[vec];
-                                        glObjBuffer[tracker+1] = vertexArray[vec+1];
-                                        glObjBuffer[tracker+2] = vertexArray[vec+2];
-                                        glObjBuffer[tracker+3] = textureArray[tex];
-                                        glObjBuffer[tracker+4] = textureArray[tex+1];
-                                        glObjBuffer[tracker+5] = normalArray[norm];
-                                        glObjBuffer[tracker+6] = normalArray[norm+1];
-                                        glObjBuffer[tracker+7] = normalArray[norm+2];
-					tracker += 8;
-
-					glObjBuffer[tracker] = vertexArray[vec_c];
-                                        glObjBuffer[tracker+1] = vertexArray[vec_c+1];
-                                        glObjBuffer[tracker+2] = vertexArray[vec_c+2];
-                                        glObjBuffer[tracker+3] = textureArray[tex_c];
-                                        glObjBuffer[tracker+4] = textureArray[tex_c+1];
-                                        glObjBuffer[tracker+5] = normalArray[norm_c];
-                                        glObjBuffer[tracker+6] = normalArray[norm_c+1];
-                                        glObjBuffer[tracker+7] = normalArray[norm_c+2];
-					tracker += 8;
-				}
-
-				if(correct == 2){
-					printf("Correct 2 by adding 1\n");
-					glObjBuffer[tracker] = vertexArray[vec_b];
-                                        glObjBuffer[tracker+1] = vertexArray[vec_b+1];
-                                        glObjBuffer[tracker+2] = vertexArray[vec_b+2];
-                                        glObjBuffer[tracker+3] = textureArray[tex_b];
-                                        glObjBuffer[tracker+4] = textureArray[tex_b+1];
-                                        glObjBuffer[tracker+5] = normalArray[norm_b];
-                                        glObjBuffer[tracker+6] = normalArray[norm_b+1];
-                                        glObjBuffer[tracker+7] = normalArray[norm_b+2];
-                                        tracker += 8;
-				}
-
-			}
-
-
-			obj = (obj_data_t *)glObjBuffer;
-			objCount = glObjBufferSize/8;///sizeof(obj_data_t);
-			delete[] faceArray;
-			delete[] vertexArray;
-			delete[] textureArray;
-			delete[] normalArray;
+			this->objFileBuffer = new char[50000];
+			this->objFileSize = this->openAndRead(this->objFileName.c_str(), &this->objFileFd, this->objFileBuffer, 50000);	
+			
+			this->waveobj.import_obj(this->objFileBuffer, this->objFileSize);
+			
+			return true;
 		}
 	public:
-		size_t objCount = 0;
-		obj_data_t *obj = NULL;
+		WavefrontObject waveobj;
+		float *gl_buffer;
+		size_t gl_buffer_size;
+		size_t gl_stride=0;
 
-		size_t glObjBufferSize = 0;
-		float *glObjBuffer = NULL;
-
-		bool import(const char *objFile){
-			fd = open(objFile, O_RDONLY);
-			if(!fd){
-				printf("Failed to open '%s'\n", objFile);
-				return false;
-			}
-
-			struct stat st;
-			if(fstat(fd, &st)){
-				printf("fstat failed.\n");
-				close(fd);
-				return false;
-			}
-			this->objFileSize = st.st_size;
-			this->objFileData = new char[objFileSize];
-
-			if(read(fd, objFileData, objFileSize) < objFileSize){
-				printf("Failed to read.\n");
-				close(fd);
-				delete[] this->objFileData;
-				return false;
-			}
-			close(fd);
-
-			printf("Counting Fields.\n");
-			countFields();
-
-			printf("Allocating field strings.\n");
-			allocateFieldStrings();
-
-			printf("Parsing Vertex Floats.\n");
-			parseVertexFloats();
+		void dumpObjFile(){
+			printf("Loaded file (%ld bytes) '%s'\n", this->objFileSize, this->objFileName.c_str());
 			
-			printf("Parsing Texture Floats.\n");
-			parseTextureFloats();
+			printf("Imported Object Name '%s'\n", this->waveobj.object_name.c_str());
+                	printf("Imported %ld vertecies\n", this->waveobj.object_vertex_size);
+			for(int i=0; i<this->waveobj.object_vertex_size; i++){
+				printf("(%f, %f, %f)\n", this->waveobj.object_vertex[i][0], this->waveobj.object_vertex[i][1], this->waveobj.object_vertex[i][2]);
+			}
+                	printf("Imported %ld texteture points\n", this->waveobj.object_texture_size);
+			for(int i=0; i<this->waveobj.object_texture_size; i++){
+				printf("(%f, %f)\n", this->waveobj.object_texture[i][0], this->waveobj.object_texture[i][1]);
+			}
+                	printf("Imported %ld normals\n", this->waveobj.object_normal_size);
+			for(int i=0; i<this->waveobj.object_normal_size; i++){
+				printf("(%f, %f, %f)\n", this->waveobj.object_normal[i][0], this->waveobj.object_normal[i][1], this->waveobj.object_normal[i][2]);
+			}
+                	printf("Imported %ld faces\n", this->waveobj.object_face_size);
+			for(int i=0; i<this->waveobj.object_face_size; i++){
+				printf("\tface %d: ", i);
+				printf("(");
+				for(int j=0; j<this->waveobj.object_face[i].count; j++){
+					printf("%d ", this->waveobj.object_face[i].v_index[j]);
+				}
+				printf(") ");
+				printf("(");
+				for(int j=0; j<this->waveobj.object_face[i].count; j++){
+					printf("%d ", this->waveobj.object_face[i].vt_index[j]);
+				}
+				printf(") ");
+				printf("(");
+				for(int j=0; j<this->waveobj.object_face[i].count; j++){
+					printf("%d ", this->waveobj.object_face[i].vn_index[j]);
+				}
+				printf(")\n");
+
+
+			}			
+	
+			printf("Target Material File : '%s'\n", this->waveobj.object_mtllib.c_str());
+			printf("Target Material Name : '%s'\n", this->waveobj.object_material.c_str());
+
+			/*for(int i=0;i<this->objFileSize;i++){
+				printf("%c", this->objFileBuffer[i]);
+			}printf("\n\n");*/
+		}
+
+		void dumpMtlFile(){
+			printf("\n===Objects Material '%s'===\n", this->waveobj.material_name.c_str());
+			printf("Material Ns : %f\n", this->waveobj.material_ns);
+			printf("Material Ka : (%f, %f, %f)\n", this->waveobj.material_ka[0], this->waveobj.material_ka[1], this->waveobj.material_ka[2]);
+			printf("Material Kd : (%f, %f, %f)\n", this->waveobj.material_kd[0], this->waveobj.material_kd[1], this->waveobj.material_kd[2]);
+			printf("Material Ks : (%f, %f, %f)\n", this->waveobj.material_ks[0], this->waveobj.material_ks[1], this->waveobj.material_ks[2]);
+			printf("Material Ke : (%f, %f, %f)\n", this->waveobj.material_ke[0], this->waveobj.material_ke[1], this->waveobj.material_ke[2]);
+			printf("Material Ni : %f\n", this->waveobj.material_ni);
+			printf("Material d : %f\n", this->waveobj.material_d);
+			printf("Material illum : %f\n", this->waveobj.material_illum);
+			printf("Material map_Kd : '%s'\n", this->waveobj.material_map_kd.c_str());
+
+		}
+
+		size_t getCellLength(const char *fmt){
+			size_t cellSize=0;
+			for(int i=0; i<strlen(fmt); i++){
+				switch(this->parseBufferFormat(fmt, i)){
+					case WF_FMT_V:
+					case WF_FMT_N:
+					case WF_FMT_A:
+					case WF_FMT_E:
+					case WF_FMT_3:
+					case WF_FMT_KD:
+						cellSize+=3;
+					break;
+					case WF_FMT_T:
+					case WF_FMT_2:
+						cellSize+=2;
+					break;
+					case WF_FMT_D:
+					case WF_FMT_S:
+					case WF_FMT_1:
+						cellSize+=1;
+					break;
+					case WF_FMT_4:
+						cellSize+=4;
+					break;
+				}
+			}
+			this->gl_stride=cellSize;
+			return cellSize;
+		}
+		int parseBufferFormat(const char *fmt, unsigned int index){
+			if(index >= strlen(fmt)) return -1;
 			
-			printf("Parsing noramls floats.\n");
-			parseNormalFloats();
+			char target = fmt[index];
+			if(target == 'v') return WF_FMT_V;
+			if(target == 't') return WF_FMT_T;
+			if(target == 'n') return WF_FMT_N;
+			if(target == 'a') return WF_FMT_A;
+			if(target == 'd') return WF_FMT_D;
+			if(target == 'D') return WF_FMT_KD;
+			if(target == 's') return WF_FMT_S;
+			if(target == 'e') return WF_FMT_E;
+			if(target == '1') return WF_FMT_1;
+			if(target == '2') return WF_FMT_2;
+			if(target == '3') return WF_FMT_3;
+			if(target == '4') return WF_FMT_4;
+			return -1;
+		}	
+	
+		/*
+		 * Supported formats
+		 * Key: 
+			0 v=vertex, only one 
+			1 t=texture, only one
+			2 n=normal, only one
+			3 a=color, sourced from material Na
+			4 d=color, sourced from material Nd
+			5 s=color, sourced from material Ns
+			6 e=color, sourced from material Ne
+			7 1-4=padding, add x digits of 0 padding. min:1, max:4. More than one supported. 
+			EMPTY=vtn. an empty format gives vertex, texture, normal
+			
+		* *
+		 * There should be no spaces between items.
+		 * An empty string will build the format 'vtn'
+		 * */
+		bool genBuffer_format(const char *fmt){
+			// Determine size of formatted string
+			std::string fmt_str="";
+			if(strlen(fmt) <= 0){ 
+				fmt_str = "vtn";
+			}else{
+				fmt_str = fmt;
+			}
+			size_t formatCellSize = this->getCellLength(fmt_str.c_str());
+	
+			// determine total size relative to face count and format cell size.
+			this->gl_buffer_size = 0;
+			if(this->gl_buffer){
+				delete[] this->gl_buffer;
+				this->gl_buffer = NULL;
+			}
+			size_t pointCount = 0;
+			for(int i=0; i<this->waveobj.object_face_size; i++){
+				for(int j=0; j<this->waveobj.object_face[i].count; j++){
+					this->gl_buffer_size += formatCellSize;
+					pointCount++;
+				}
+			}
+			this->gl_buffer = new float[this->gl_buffer_size];
+			int gl=0;
 
-			printf("Parsing face indecies.\n");
-			parseFaceIndecies();
+			// Populate the buffer.
+			for(int i=0; i<this->waveobj.object_face_size; i++){
 
-			printf("Creating the buffer.\n");
-			createGlBuffer();
-			delete[] this->objFileData;
-
-
+			}
+			int activeFace=0;
+			int activePoint=0;
+			for(int i=0; i<pointCount; i++){
+				if(activeFace >= this->waveobj.object_face_size) break;
+				if(activePoint >= this->waveobj.object_face[activeFace].count) break;
+				int vertexIdx = this->waveobj.object_face[activeFace].v_index[activePoint]-1;
+				int textureIdx = this->waveobj.object_face[activeFace].vt_index[activePoint]-1;
+				int normalIdx = this->waveobj.object_face[activeFace].vn_index[activePoint]-1;
+				
+				for(int F=0; F<strlen(fmt); F++){
+					switch(this->parseBufferFormat(fmt, F)){
+						case WF_FMT_V:
+							if(gl >=this->gl_buffer_size ||  gl+2 >= this->gl_buffer_size){
+								break;
+							}
+							if(vertexIdx >= this->waveobj.object_vertex_size) {
+								continue;
+							}
+							this->gl_buffer[gl] = this->waveobj.object_vertex[vertexIdx][0];
+							gl++;
+							this->gl_buffer[gl] = this->waveobj.object_vertex[vertexIdx][1];
+							gl++;
+							this->gl_buffer[gl] = this->waveobj.object_vertex[vertexIdx][2];
+							gl++;
+						break;
+						case WF_FMT_T:
+							if(textureIdx >= this->waveobj.object_texture_size) {continue;}
+							if(gl >=this->gl_buffer_size || gl+1 >= this->gl_buffer_size) continue;
+							this->gl_buffer[gl] = this->waveobj.object_texture[textureIdx][0];
+							gl++;
+							this->gl_buffer[gl] = this->waveobj.object_texture[textureIdx][1];
+							gl++;
+						break;
+						case WF_FMT_N:
+							if(normalIdx >= this->waveobj.object_normal_size) {continue;}
+							if(gl >=this->gl_buffer_size || gl+2 >= this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = this->waveobj.object_normal[normalIdx][0];
+                                                               gl++;
+                                                               this->gl_buffer[gl] = this->waveobj.object_normal[normalIdx][1];
+                                                               gl++;
+                                                               this->gl_buffer[gl] = this->waveobj.object_normal[normalIdx][2];
+                                                               gl++;
+						break;
+						case WF_FMT_A:
+							if(gl >=this->gl_buffer_size || gl+2 >= this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = this->waveobj.material_ka[0];
+                                                               gl++;
+                                                               this->gl_buffer[gl] = this->waveobj.material_ka[1];
+                                                               gl++;
+                                                               this->gl_buffer[gl] = this->waveobj.material_ka[2];
+                                                               gl++;
+						break;
+						case WF_FMT_D:
+							if(gl >=this->gl_buffer_size ) break;
+                                                               this->gl_buffer[gl] = this->waveobj.material_d;
+                                                               gl++;
+						break;
+						case WF_FMT_S:
+							if(gl >=this->gl_buffer_size ) break;
+                                                               this->gl_buffer[gl] = this->waveobj.material_ns;
+                                                               gl++;
+						break;
+						case WF_FMT_E:
+							if(gl >=this->gl_buffer_size || gl+2 >= this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = this->waveobj.material_ke[0];
+                                                               gl++;
+                                                               this->gl_buffer[gl] = this->waveobj.material_ke[1];
+                                                               gl++;
+                                                               this->gl_buffer[gl] = this->waveobj.material_ke[2];
+                                                               gl++;
+						break;
+						case WF_FMT_1:
+							if(gl >=this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+						break;
+						case WF_FMT_2:
+							if(gl >=this->gl_buffer_size || gl+1 >= this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+						break;
+						case WF_FMT_3:
+							if(gl >=this->gl_buffer_size || gl+2 >= this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+						break;
+						case WF_FMT_4:
+							if(gl >=this->gl_buffer_size || gl+3 >= this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+						break;
+					}
+				}
+                        	activePoint++;
+				if(activePoint >= this->waveobj.object_face[activeFace].count){
+                        		activePoint=0;
+					activeFace++;
+					if(activeFace >= this->waveobj.object_face_size) activeFace = 0;
+				}
+			}
 			return true;
 		}
 
-		void destroy(void){
-			objCount = 0;
-                	glObjBufferSize = 0;
-                	delete[] glObjBuffer;
-			vertexCount = 0;
-                	vertexMultiplyer = 0;
-                	textureCount = 0;
-                	textureMultiplyer = 0;
-
-                	normalCount = 0;
-                	normalMultiplyer = 0;
-
-                	faceCount = 0;
-                	faceMultiplyer = 0;
-
-                	objFileSize = 0;
-                	objFileData = NULL;
-
-                	vertexArray = NULL;
-                	textureArray = NULL;
-                	normalArray = NULL;
-                	faceArray = NULL;
-		
-			textures = NULL;
-               		normals = NULL;
-               		vertexs = NULL;
-             		faces = NULL;
-
+		bool import(const char *target){
+			this->getRawFileData(target);
+			
+			return true;
 		}
 };
