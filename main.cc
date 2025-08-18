@@ -119,6 +119,10 @@ bool bufGen(int argc, char *argv[]){
 			return false;
 		case 2: // --javascript
 			for(int i=0; i<objImport.objCount; i++){
+				for(int j=0; j<objImport.objList[i].object_name.length(); j++){
+					if(objImport.objList[i].object_name[j] == '.')
+						objImport.objList[i].object_name[j]='_';
+				}					
 				objImport.genBuffer_format(globFormat.c_str(), i);
 				build += "/*\n\tBuilt lovingly with wfparse\n */\n";
 				build += "class WF_"+objImport.objList[i].object_name+"{\n";
@@ -165,7 +169,7 @@ bool bufGen(int argc, char *argv[]){
 					build += "\t\t];\n";
 				build += "\t}\n";
 
-                        	build += "\tgetMaterialName){return this.gl_material[0];}\n";
+                        	build += "\tgetMaterialName(){return this.gl_material[0];}\n";
 				build += "\tgetMaterialNs(){return this.gl_material[1];}\n";
                         	build += "\tgetMaterialKa(){return this.gl_material[2];}\n";
                         	build += "\tgetMaterialKd(){return this.gl_material[3];}\n";
