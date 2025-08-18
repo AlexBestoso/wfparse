@@ -1,18 +1,5 @@
 #include "./obj.class.h"
 
-#define WF_FMT_V 0
-#define WF_FMT_T 1
-#define WF_FMT_N 2
-#define WF_FMT_A 3
-#define WF_FMT_D 4
-#define WF_FMT_S 5
-#define WF_FMT_E 6
-#define WF_FMT_1 7
-#define WF_FMT_2 8
-#define WF_FMT_3 9
-#define WF_FMT_4 10
-#define WF_FMT_KD 11
-
 
 class WavefrontImport{
 	private:
@@ -57,15 +44,178 @@ class WavefrontImport{
 				free(this->objFileBuffer);
 				this->objFileBuffer = NULL;
 			}
-			this->objFileBuffer = new char[50000];
-			this->objFileSize = this->openAndRead(this->objFileName.c_str(), &this->objFileFd, this->objFileBuffer, 50000);	
+			this->objFileBuffer = new char[1000000];
+			this->objFileSize = this->openAndRead(this->objFileName.c_str(), &this->objFileFd, this->objFileBuffer, 1000000);	
 			
-			this->waveobj.import_obj(this->objFileBuffer, this->objFileSize);
 			
 			return true;
 		}
+
+		void countObjects(){
+			std::string line="";
+			for(int i=0; i<this->objFileSize; i++){
+				line += this->objFileBuffer[i];
+				if(this->objFileBuffer[i] == '\n'){
+					if(line[0] == 'o') this->objCount++;
+					line = "";
+				}
+			}
+		}
+		void countV(){
+			std::string line="";
+			std::string v_data="";
+			if(this->vCache){
+				for(int i=0; i<this->vCount; i++){
+					delete[] this->vCache[i];
+				}
+				delete[] this->vCache;
+			}
+
+			for(int i=0; i<this->objFileSize; i++){
+				line += this->objFileBuffer[i];
+				if(this->objFileBuffer[i] == '\n'){
+					if(line[0] == 'v' && line[1] == ' '){
+						v_data += line;
+						this->vCount++;
+					}
+					line = "";
+				}
+			}
+				
+			this->vCache = new float*[this->vCount];
+			for(int i=0; i<this->vCount; i++)
+				this->vCache[i] = new float[3];
+
+
+			
+			int I=0;
+			line="";
+			for(int i=0; i<v_data.length(); i++){
+				line += v_data[i];
+				if(v_data[i] == '\n'){
+					if(line.length() <= 2) return;
+					std::string val="";
+					int J=0;
+					for(int j=2; j<line.length(); j++){	
+						if((line[j] == ' ' || line[j] == '\n') && J < 3 && val.length() >= 3){
+							this->vCache[I][J] = std::stof(val.c_str());
+							J++;
+							val="";
+							continue;
+						}
+						val+=line[j];
+					}
+					I++;
+					line = "";
+				}
+			}
+		}
+
+		void countVn(){
+			std::string line="";
+			std::string v_data="";
+			if(this->vnCache){
+				for(int i=0; i<this->vnCount; i++){
+					delete[] this->vnCache[i];
+				}
+				delete[] this->vnCache;
+			}
+
+			for(int i=0; i<this->objFileSize; i++){
+				line += this->objFileBuffer[i];
+				if(this->objFileBuffer[i] == '\n'){
+					if(line[0] == 'v' && line[1] == 'n'){
+						v_data+=line;
+						this->vnCount++;
+					}
+					line = "";
+				}
+			}
+			this->vnCache = new float*[this->vnCount];
+			for(int i=0; i<this->vnCount; i++)
+				this->vnCache[i] = new float[3];
+
+			int I=0;
+                        line="";
+                        for(int i=0; i<v_data.length(); i++){
+                                line += v_data[i];
+                                if(v_data[i] == '\n'){
+                                        if(line.length() <= 2) return;
+                                        std::string val="";
+                                        int J=0;
+                                        for(int j=3; j<line.length(); j++){
+                                                if((line[j] == ' ' || line[j] == '\n') && J < 3 && val.length() >= 3){
+                                                        this->vnCache[I][J] = std::stof(val.c_str());
+                                                        J++;
+                                                        val="";
+                                                        continue;
+                                                }
+                                                val+=line[j];
+                                        }
+                                        I++;
+                                        line = "";
+                                }
+                        }
+		}
+		
+		void countVt(){
+			std::string line="";
+			std::string v_data="";
+			if(this->vtCache){
+				for(int i=0; i<this->vtCount; i++){
+					delete[] this->vtCache[i];
+				}
+				delete[] this->vtCache;
+				this->vtCache = NULL;
+			}
+			this->vtCount=0;
+			for(int i=0; i<this->objFileSize; i++){
+				line += this->objFileBuffer[i];
+				if(this->objFileBuffer[i] == '\n'){
+					if(line[0] == 'v' && line[1] == 't') {
+						v_data += line;
+						this->vtCount++;
+					}
+					line = "";
+				}
+			}
+			this->vtCache = new float*[this->vtCount];
+			for(int i=0; i<this->vtCount; i++)
+				this->vtCache[i] = new float[2];
+
+			int I=0;
+                        line="";
+                        for(int i=0; i<v_data.length(); i++){
+                                line += v_data[i];
+                                if(v_data[i] == '\n'){
+                                        if(line.length() <= 2) return;
+                                        std::string val="";
+                                        int J=0;
+                                        for(int j=3; j<line.length(); j++){
+                                                if((line[j] == ' ' || line[j] == '\n') && J < 2 && val.length() >= 3){
+                                                        this->vtCache[I][J] = std::stof(val.c_str());
+                                                        J++;
+                                                        val="";
+                                                        continue;
+                                                }
+                                                val+=line[j];
+                                        }
+                                        I++;
+                                        line = "";
+                                }
+                        }
+			
+		}
 	public:
 		WavefrontObject waveobj;
+		size_t objCount=0;
+		size_t vCount=0;
+		size_t vnCount=0;
+		size_t vtCount=0;
+		WavefrontObject *objList=NULL;
+		float **vCache=NULL;
+		float **vnCache=NULL;
+		float **vtCache=NULL;
 		float *gl_buffer;
 		size_t gl_buffer_size;
 		size_t gl_stride=0;
@@ -189,160 +339,96 @@ class WavefrontImport{
 			5 s=color, sourced from material Ns
 			6 e=color, sourced from material Ne
 			7 1-4=padding, add x digits of 0 padding. min:1, max:4. More than one supported. 
+			8 D=color, sourced from material Kd
 			EMPTY=vtn. an empty format gives vertex, texture, normal
 			
 		* *
 		 * There should be no spaces between items.
 		 * An empty string will build the format 'vtn'
 		 * */
-		bool genBuffer_format(const char *fmt){
-			// Determine size of formatted string
-			std::string fmt_str="";
-			if(strlen(fmt) <= 0){ 
-				fmt_str = "vtn";
-			}else{
-				fmt_str = fmt;
-			}
-			size_t formatCellSize = this->getCellLength(fmt_str.c_str());
-	
-			// determine total size relative to face count and format cell size.
-			this->gl_buffer_size = 0;
-			if(this->gl_buffer){
-				delete[] this->gl_buffer;
-				this->gl_buffer = NULL;
-			}
-			size_t pointCount = 0;
-			for(int i=0; i<this->waveobj.object_face_size; i++){
-				for(int j=0; j<this->waveobj.object_face[i].count; j++){
-					this->gl_buffer_size += formatCellSize;
-					pointCount++;
-				}
-			}
-			this->gl_buffer = new float[this->gl_buffer_size];
-			int gl=0;
-
-			// Populate the buffer.
-			for(int i=0; i<this->waveobj.object_face_size; i++){
-
-			}
-			int activeFace=0;
-			int activePoint=0;
-			for(int i=0; i<pointCount; i++){
-				if(activeFace >= this->waveobj.object_face_size) break;
-				if(activePoint >= this->waveobj.object_face[activeFace].count) break;
-				int vertexIdx = this->waveobj.object_face[activeFace].v_index[activePoint]-1;
-				int textureIdx = this->waveobj.object_face[activeFace].vt_index[activePoint]-1;
-				int normalIdx = this->waveobj.object_face[activeFace].vn_index[activePoint]-1;
-				
-				for(int F=0; F<strlen(fmt); F++){
-					switch(this->parseBufferFormat(fmt, F)){
-						case WF_FMT_V:
-							if(gl >=this->gl_buffer_size ||  gl+2 >= this->gl_buffer_size){
-								break;
-							}
-							if(vertexIdx >= this->waveobj.object_vertex_size) {
-								continue;
-							}
-							this->gl_buffer[gl] = this->waveobj.object_vertex[vertexIdx][0];
-							gl++;
-							this->gl_buffer[gl] = this->waveobj.object_vertex[vertexIdx][1];
-							gl++;
-							this->gl_buffer[gl] = this->waveobj.object_vertex[vertexIdx][2];
-							gl++;
-						break;
-						case WF_FMT_T:
-							if(textureIdx >= this->waveobj.object_texture_size) {continue;}
-							if(gl >=this->gl_buffer_size || gl+1 >= this->gl_buffer_size) continue;
-							this->gl_buffer[gl] = this->waveobj.object_texture[textureIdx][0];
-							gl++;
-							this->gl_buffer[gl] = this->waveobj.object_texture[textureIdx][1];
-							gl++;
-						break;
-						case WF_FMT_N:
-							if(normalIdx >= this->waveobj.object_normal_size) {continue;}
-							if(gl >=this->gl_buffer_size || gl+2 >= this->gl_buffer_size) break;
-                                                               this->gl_buffer[gl] = this->waveobj.object_normal[normalIdx][0];
-                                                               gl++;
-                                                               this->gl_buffer[gl] = this->waveobj.object_normal[normalIdx][1];
-                                                               gl++;
-                                                               this->gl_buffer[gl] = this->waveobj.object_normal[normalIdx][2];
-                                                               gl++;
-						break;
-						case WF_FMT_A:
-							if(gl >=this->gl_buffer_size || gl+2 >= this->gl_buffer_size) break;
-                                                               this->gl_buffer[gl] = this->waveobj.material_ka[0];
-                                                               gl++;
-                                                               this->gl_buffer[gl] = this->waveobj.material_ka[1];
-                                                               gl++;
-                                                               this->gl_buffer[gl] = this->waveobj.material_ka[2];
-                                                               gl++;
-						break;
-						case WF_FMT_D:
-							if(gl >=this->gl_buffer_size ) break;
-                                                               this->gl_buffer[gl] = this->waveobj.material_d;
-                                                               gl++;
-						break;
-						case WF_FMT_S:
-							if(gl >=this->gl_buffer_size ) break;
-                                                               this->gl_buffer[gl] = this->waveobj.material_ns;
-                                                               gl++;
-						break;
-						case WF_FMT_E:
-							if(gl >=this->gl_buffer_size || gl+2 >= this->gl_buffer_size) break;
-                                                               this->gl_buffer[gl] = this->waveobj.material_ke[0];
-                                                               gl++;
-                                                               this->gl_buffer[gl] = this->waveobj.material_ke[1];
-                                                               gl++;
-                                                               this->gl_buffer[gl] = this->waveobj.material_ke[2];
-                                                               gl++;
-						break;
-						case WF_FMT_1:
-							if(gl >=this->gl_buffer_size) break;
-                                                               this->gl_buffer[gl] = 0.0;
-                                                               gl++;
-						break;
-						case WF_FMT_2:
-							if(gl >=this->gl_buffer_size || gl+1 >= this->gl_buffer_size) break;
-                                                               this->gl_buffer[gl] = 0.0;
-                                                               gl++;
-                                                               this->gl_buffer[gl] = 0.0;
-                                                               gl++;
-						break;
-						case WF_FMT_3:
-							if(gl >=this->gl_buffer_size || gl+2 >= this->gl_buffer_size) break;
-                                                               this->gl_buffer[gl] = 0.0;
-                                                               gl++;
-                                                               this->gl_buffer[gl] = 0.0;
-                                                               gl++;
-                                                               this->gl_buffer[gl] = 0.0;
-                                                               gl++;
-						break;
-						case WF_FMT_4:
-							if(gl >=this->gl_buffer_size || gl+3 >= this->gl_buffer_size) break;
-                                                               this->gl_buffer[gl] = 0.0;
-                                                               gl++;
-                                                               this->gl_buffer[gl] = 0.0;
-                                                               gl++;
-                                                               this->gl_buffer[gl] = 0.0;
-                                                               gl++;
-                                                               this->gl_buffer[gl] = 0.0;
-                                                               gl++;
-						break;
-					}
-				}
-                        	activePoint++;
-				if(activePoint >= this->waveobj.object_face[activeFace].count){
-                        		activePoint=0;
-					activeFace++;
-					if(activeFace >= this->waveobj.object_face_size) activeFace = 0;
-				}
-			}
+		bool genBuffer_format(const char *fmt, int objIndex){
+			if(objIndex == -1 || objIndex >= this->objCount) return false;
+			this->objList[objIndex].buildGlBuffer(fmt);
 			return true;
 		}
 
+		
+		std::string getObjectDataByIndex(int idx){
+			std::string ret = "";
+			bool found=false;
+			std::string line ="";
+			std::string mtlLine="";
+			int I=0;
+			for(int i=0; i<this->objFileSize; i++){
+				line += this->objFileBuffer[i];
+                                if(this->objFileBuffer[i] == '\n'){
+					if(line.length() >= 6){
+						std::string data="";
+						for(int j=0;j<6; j++) data += line[j];
+						if(!strncmp(data.c_str(), "mtllib", 6)){
+							mtlLine = line;
+						}
+					}
+					if(found){
+                                                if(line[0] == 'o'){
+							return mtlLine+ret;
+                                                }
+						ret += line;
+						line="";
+						continue;
+					}
+					
+					if(line[0] == 'o'){
+						if(I==idx){
+							found = true;
+							ret = line;
+						}
+						I++;
+					}
+					line = "";
+				}
+			}
+			return mtlLine+ret;
+		}
+		
+		bool new_import(const char *target){
+			this->getRawFileData(target);
+			this->countObjects();
+			this->countV();
+			this->countVn();
+			this->countVt();
+			this->objList = new WavefrontObject[this->objCount];
+			
+			std::string data = this->getObjectDataByIndex(0);
+			std::string mtlTarget = "";
+			std::string line = "";
+			for(int i=0; i<data.length(); i++){
+				if(mtlTarget != "" && data[i] == '\n'){
+					mtlTarget = line;
+					break;
+				}
+				line += data[i];
+				if(line.length() == 6 && !strncmp(line.c_str(), "mtllib", 6)){
+					mtlTarget = "ready";
+					line="";
+					i++;
+				}else if(data[i] == '\n'){
+					line = "";
+				}
+			}
+			for(int i=0; i<this->objCount; i++){
+				data = this->getObjectDataByIndex(i);
+				this->objList[i].import_obj(mtlTarget.c_str(), 
+								this->vCache, this->vCount, 
+								this->vnCache, this->vnCount,
+								this->vtCache, this->vtCount, 
+								(char *)data.c_str(), data.length());
+			}	
+			return true;
+		}
 		bool import(const char *target){
 			this->getRawFileData(target);
-			
+			this->waveobj.import_obj(this->objFileBuffer, this->objFileSize);
 			return true;
 		}
 };

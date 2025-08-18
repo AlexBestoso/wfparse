@@ -110,25 +110,94 @@ bool bufGen(int argc, char *argv[]){
 	if(switchCtrl == 1 && result2 != 1 && result2 != -1)
 		switchCtrl = result2;
 	
+	std::string build = "";
+	std::string classNames = "";
+	std::string line = "";
 	switch(switchCtrl){
 		default:
 			printBufGenUsage();
 			return false;
 		case 2: // --javascript
-			objImport.genBuffer_format(globFormat.c_str());
-			printf("\nvar WF_OBJECT = [");
-			for(int i=0; i<objImport.gl_buffer_size; i++){
-				if((i%objImport.gl_stride) == 0) printf("[");
+			for(int i=0; i<objImport.objCount; i++){
+				objImport.genBuffer_format(globFormat.c_str(), i);
+				build += "/*\n\tBuilt lovingly with wfparse\n */\n";
+				build += "class WF_"+objImport.objList[i].object_name+"{\n";
+				build += "\tgl_stride = null;\n";
+				build += "\tgl_data = null;\n";
+				build += "\tgl_material = null;\n";
+
+				build += "\tconstructor(){\n";
+					build += "\t\tthis.gl_material = [\n";
+                        		build += "\t\t\t'"+objImport.objList[i].material_name+"',\n";
+					build += "\t\t\t"+std::to_string(objImport.objList[i].material_ns)+",\n";
+                        		build += "\t\t\t[" + std::to_string(objImport.objList[i].material_ka[0]) + ", " +
+							     std::to_string(objImport.objList[i].material_ka[1]) + ", " +
+							     std::to_string(objImport.objList[i].material_ka[2]) +
+							 "],\n";
+                        		build += "\t\t\t[" + std::to_string(objImport.objList[i].material_kd[0]) + ", " +
+							     std::to_string(objImport.objList[i].material_kd[1]) + ", " +
+							     std::to_string(objImport.objList[i].material_kd[2]) +
+							 "],\n";
+                        		build += "\t\t\t[" + std::to_string(objImport.objList[i].material_ks[0]) + ", " +
+							     std::to_string(objImport.objList[i].material_ks[1]) + ", " +
+							     std::to_string(objImport.objList[i].material_ks[2]) +
+							"],\n";
+                        		build += "\t\t\t[" + std::to_string(objImport.objList[i].material_ke[0]) + ", " + 
+							     std::to_string(objImport.objList[i].material_ke[1]) + ", " +
+							     std::to_string(objImport.objList[i].material_ke[2]) +
+							"],\n";
+                        		build += "\t\t\t"+std::to_string(objImport.objList[i].material_ni)+",\n";
+                        		build += "\t\t\t"+std::to_string(objImport.objList[i].material_d)+",\n";
+                        		build += "\t\t\t"+std::to_string(objImport.objList[i].material_illum)+",\n";
+                        		build += "\t\t\t'"+objImport.objList[i].material_map_kd+"',\n";
+
+					build += "\t\t];\n";
+					build += "\t\tthis.gl_stride = " + std::to_string(objImport.gl_stride)+";\n";
+					build += "\t\tthis.gl_data = [\n";
+					for(int j=0; j<objImport.objList[i].gl_buffer_size; j++){
+						if((j%objImport.objList[i].gl_stride) == 0) build += "\t\t\t[";
 				
-				printf("%f, ", objImport.gl_buffer[i]);
+						build += std::to_string(objImport.objList[i].gl_buffer[j]);
+						build += ",";
+	
+						if((j%objImport.objList[i].gl_stride) == objImport.objList[i].gl_stride-1) build += "],\n";
+					}
+					build += "\t\t];\n";
+				build += "\t}\n";
 
-				if((i%objImport.gl_stride) == objImport.gl_stride-1) printf("],");
+                        	build += "\tgetMaterialName){return this.gl_material[0];}\n";
+				build += "\tgetMaterialNs(){return this.gl_material[1];}\n";
+                        	build += "\tgetMaterialKa(){return this.gl_material[2];}\n";
+                        	build += "\tgetMaterialKd(){return this.gl_material[3];}\n";
+                        	build += "\tgetMaterialKs(){return this.gl_material[4];}\n";
+                        	build += "\tgetMaterialKe(){return this.gl_material[5];}\n";
+                        	build += "\tgetMaterialNi(){return this.gl_material[6];}\n";
+                        	build += "\tgetMaterialD(){return this.gl_material[7];}\n";
+                        	build += "\tgetMaterialIllum(){return this.gl_material[8];}\n";
+                        	build += "\tgetMaterialMapKd(){return this.gl_material[9];}\n";
+
+				build += "}\n";
+				build += "let wf_"+objImport.objList[i].object_name + " = new "+"WF_"+objImport.objList[i].object_name+"();";
+				classNames += "wf_"+objImport.objList[i].object_name+"\n";
+				printf("%s\n", build.c_str());
+				build = "";
 			}
-			printf("];\n");
 
+			build = "\nlet WF_Collection_ = [";
+			line = "";
+			for(int i=0; i<classNames.length(); i++){
+				if(classNames[i] == '\n'){
+					build += line + ", ";
+					line = "";
+					continue;
+				}
+				line += classNames[i];
+			}
+			build += "];\n";
+			printf("%s\n", build.c_str());
 			break;
 		case 3: // --float-array
-			objImport.genBuffer_format(globFormat.c_str());
+			objImport.genBuffer_format(globFormat.c_str(), 0);
                         printf("\nsize_t WF_OBJECT_SIZE=%ld;\nfloat WF_OBJECT[%ld] = {", objImport.gl_buffer_size, objImport.gl_buffer_size);
                         for(int i=0; i<objImport.gl_buffer_size; i++){
                                 if((i%objImport.gl_stride) == 0) printf("\n\t");
@@ -142,7 +211,7 @@ bool bufGen(int argc, char *argv[]){
                         printf("\n};\n");
 			break;
 		case 4: //--raw-dump
-			objImport.genBuffer_format(globFormat.c_str());
+			objImport.genBuffer_format(globFormat.c_str(), 0);
 			printf("Raw Buffer : \n");
 			for(int i=0; i<objImport.gl_buffer_size; i++){
 				if((i%objImport.gl_stride) == 0) printf("\n");
@@ -161,6 +230,7 @@ int main(int argc, char *argv[]){
 		return 1;
 	}
 	
+	objImport.new_import(argv[1]);
 
 	if(!objImport.import(argv[1])){
 		printf("[E] Failed to import file \n");

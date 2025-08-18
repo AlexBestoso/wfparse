@@ -1,3 +1,17 @@
+#define WF_FMT_V 0
+#define WF_FMT_T 1
+#define WF_FMT_N 2
+#define WF_FMT_A 3
+#define WF_FMT_D 4
+#define WF_FMT_S 5
+#define WF_FMT_E 6
+#define WF_FMT_1 7
+#define WF_FMT_2 8
+#define WF_FMT_3 9
+#define WF_FMT_4 10
+#define WF_FMT_KD 11
+
+
 struct WavefrontFace{
 	size_t count;
 	int *v_index;
@@ -6,6 +20,7 @@ struct WavefrontFace{
 };
 class WavefrontObject{
 	private:
+		
 		
 		bool import_obj_texture(void){
 			if(this->object_texture){
@@ -133,6 +148,7 @@ class WavefrontObject{
 					line="";
 				}
 			}
+
 			if(line[0] == 'f' && line[1] == ' '){
 				v_data += line;
 				this->object_face_size++;
@@ -673,6 +689,54 @@ class WavefrontObject{
                         return false;
                 }
 
+		size_t getCellLength(const char *fmt){
+			size_t cellSize=0;
+			for(int i=0; i<strlen(fmt); i++){
+				switch(this->parseBufferFormat(fmt, i)){
+					case WF_FMT_V:
+					case WF_FMT_N:
+					case WF_FMT_A:
+					case WF_FMT_E:
+					case WF_FMT_3:
+					case WF_FMT_KD:
+						cellSize+=3;
+					break;
+					case WF_FMT_T:
+					case WF_FMT_2:
+						cellSize+=2;
+					break;
+					case WF_FMT_D:
+					case WF_FMT_S:
+					case WF_FMT_1:
+						cellSize+=1;
+					break;
+					case WF_FMT_4:
+						cellSize+=4;
+					break;
+				}
+			}
+			this->gl_stride=cellSize;
+			return cellSize;
+		}
+
+		int parseBufferFormat(const char *fmt, unsigned int index){
+			if(index >= strlen(fmt)) return -1;
+			
+			char target = fmt[index];
+			if(target == 'v') return WF_FMT_V;
+			if(target == 't') return WF_FMT_T;
+			if(target == 'n') return WF_FMT_N;
+			if(target == 'a') return WF_FMT_A;
+			if(target == 'd') return WF_FMT_D;
+			if(target == 'D') return WF_FMT_KD;
+			if(target == 's') return WF_FMT_S;
+			if(target == 'e') return WF_FMT_E;
+			if(target == '1') return WF_FMT_1;
+			if(target == '2') return WF_FMT_2;
+			if(target == '3') return WF_FMT_3;
+			if(target == '4') return WF_FMT_4;
+			return -1;
+		}	
 
 	public:
 		std::string object_name="";
@@ -682,7 +746,7 @@ class WavefrontObject{
 		size_t object_texture_size=0;
 		float **object_normal=NULL;
 		size_t object_normal_size=0;
-		WavefrontFace *object_face;
+		WavefrontFace *object_face=NULL;
 		size_t object_face_size=0;
 		std::string object_mtllib="";
 		std::string object_material="";
@@ -705,10 +769,54 @@ class WavefrontObject{
 		char *mtl_data=NULL;
 		size_t mtl_data_size=0;
 
+		float *gl_buffer=NULL;
+		size_t gl_buffer_size=0;
+		size_t gl_stride=0;
+
 		WavefrontObject(void){
 
 		}
 
+		bool import_obj(const char *mtlTarget, float **v, size_t vSize, float **vn, size_t vnSize, float **vt, size_t vtSize, char *data, size_t dataSize){
+			this->obj_data = data;
+			this->obj_data_size = dataSize;
+			this->object_vertex = v;
+			this->object_vertex_size = vSize;
+			this->object_normal = vn;
+			this->object_normal_size = vnSize;
+			this->object_texture = vt;
+			this->object_texture_size = vtSize;
+			
+                        this->object_mtllib = mtlTarget;
+			this->import_obj_name();
+			this->import_obj_face();
+                        this->import_obj_material();
+                        if(this->import_mtl() == false){
+                                printf("Failed to  import material.\n");
+                                return false;
+                        }
+
+			return true;
+		}
+		bool import_obj(const char *mtlTarget, char *data, size_t data_size){
+			this->obj_data = data;
+                        this->obj_data_size = data_size;
+			this->import_obj_name();
+                        this->import_obj_vertex();
+                        this->import_obj_normal();
+                        this->import_obj_texture();
+                        this->import_obj_face();
+                        this->import_obj_material();
+                        this->import_obj_mtllib();
+			this->object_mtllib = mtlTarget;
+			this->material_name = this->object_material;
+			if(this->import_mtl() == false){
+				printf("Failed to  import material.\n");
+				return false;
+			}
+
+			return true;
+		}
 		bool import_obj(char *data, size_t data_size){
 			this->obj_data = data;
 			this->obj_data_size = data_size;
@@ -721,6 +829,7 @@ class WavefrontObject{
 			this->import_obj_material();
 			this->import_obj_mtllib();
 
+			this->material_name = this->object_material;
 			if(this->import_mtl() == false){
 				printf("Failed to  import material.\n");
 				return false;
@@ -736,6 +845,7 @@ class WavefrontObject{
 				}
 				this->mtl_data_size = 0;
 				if(this->object_mtllib == ""){
+					printf("no obj mtllib\n");
 					return false;
 				}
 				
@@ -770,4 +880,146 @@ class WavefrontObject{
 			this->mtl_data_size = data_size;
 			return this->import_mtl();
 		}
+
+		bool buildGlBuffer(const char *fmt){
+			// Determine size of formatted string
+			std::string fmt_str="";
+			if(strlen(fmt) <= 0){ 
+				fmt_str = "vtn";
+			}else{
+				fmt_str = fmt;
+			}
+	
+			// determine total size relative to face count and format cell size.
+			size_t formatCellSize = this->getCellLength(fmt_str.c_str());
+			this->gl_buffer_size = 0;
+			if(this->gl_buffer){
+				delete[] this->gl_buffer;
+				this->gl_buffer = NULL;
+			}
+			size_t pointCount = 0;
+			for(int i=0; i<this->object_face_size; i++){
+				for(int j=0; j<this->object_face[i].count; j++){
+					this->gl_buffer_size += formatCellSize;
+					pointCount++;
+				}
+			}
+			this->gl_buffer = new float[this->gl_buffer_size];
+
+			int gl=0;
+			int activeFace=0;
+			int activePoint=0;
+			for(int i=0; i<pointCount; i++){
+				if(activeFace >= this->object_face_size) break;
+				if(activePoint >= this->object_face[activeFace].count) break;
+				int vertexIdx = this->object_face[activeFace].v_index[activePoint]-1;
+				int textureIdx = this->object_face[activeFace].vt_index[activePoint]-1;
+				int normalIdx = this->object_face[activeFace].vn_index[activePoint]-1;
+				
+				for(int F=0; F<strlen(fmt); F++){
+					switch(this->parseBufferFormat(fmt, F)){
+						case WF_FMT_V:
+							if(gl >=this->gl_buffer_size ||  gl+2 >= this->gl_buffer_size){
+								break;
+							}
+							if(vertexIdx >= this->object_vertex_size) {
+								continue;
+							}
+							this->gl_buffer[gl] = this->object_vertex[vertexIdx][0];
+							gl++;
+							this->gl_buffer[gl] = this->object_vertex[vertexIdx][1];
+							gl++;
+							this->gl_buffer[gl] = this->object_vertex[vertexIdx][2];
+							gl++;
+						break;
+						case WF_FMT_T:
+							if(textureIdx >= this->object_texture_size) {continue;}
+							if(gl >=this->gl_buffer_size || gl+1 >= this->gl_buffer_size) continue;
+							this->gl_buffer[gl] = this->object_texture[textureIdx][0];
+							gl++;
+							this->gl_buffer[gl] = this->object_texture[textureIdx][1];
+							gl++;
+						break;
+						case WF_FMT_N:
+							if(normalIdx >= this->object_normal_size) {continue;}
+							if(gl >=this->gl_buffer_size || gl+2 >= this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = this->object_normal[normalIdx][0];
+                                                               gl++;
+                                                               this->gl_buffer[gl] = this->object_normal[normalIdx][1];
+                                                               gl++;
+                                                               this->gl_buffer[gl] = this->object_normal[normalIdx][2];
+                                                               gl++;
+						break;
+						case WF_FMT_A:
+							if(gl >=this->gl_buffer_size || gl+2 >= this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = this->material_ka[0];
+                                                               gl++;
+                                                               this->gl_buffer[gl] = this->material_ka[1];
+                                                               gl++;
+                                                               this->gl_buffer[gl] = this->material_ka[2];
+                                                               gl++;
+						break;
+						case WF_FMT_D:
+							if(gl >=this->gl_buffer_size ) break;
+                                                               this->gl_buffer[gl] = this->material_d;
+                                                               gl++;
+						break;
+						case WF_FMT_S:
+							if(gl >=this->gl_buffer_size ) break;
+                                                               this->gl_buffer[gl] = this->material_ns;
+                                                               gl++;
+						break;
+						case WF_FMT_E:
+							if(gl >=this->gl_buffer_size || gl+2 >= this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = this->material_ke[0];
+                                                               gl++;
+                                                               this->gl_buffer[gl] = this->material_ke[1];
+                                                               gl++;
+                                                               this->gl_buffer[gl] = this->material_ke[2];
+                                                               gl++;
+						break;
+						case WF_FMT_1:
+							if(gl >=this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+						break;
+						case WF_FMT_2:
+							if(gl >=this->gl_buffer_size || gl+1 >= this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+						break;
+						case WF_FMT_3:
+							if(gl >=this->gl_buffer_size || gl+2 >= this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+						break;
+						case WF_FMT_4:
+							if(gl >=this->gl_buffer_size || gl+3 >= this->gl_buffer_size) break;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+                                                               this->gl_buffer[gl] = 0.0;
+                                                               gl++;
+						break;
+					}
+				}
+                        	activePoint++;
+				if(activePoint >= this->object_face[activeFace].count){
+                        		activePoint=0;
+					activeFace++;
+					if(activeFace >= this->object_face_size) activeFace = 0;
+				}
+			}
+			return true;
+		}
+
 };

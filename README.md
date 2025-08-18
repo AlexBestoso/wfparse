@@ -7,7 +7,7 @@ compile running <code>make</code>
 
 sample usage: 
 
-To generate useable glut buffers
+To generate javascript classes for use in WebGl, contains material and formatted vertex data, run:
 <code>./wfparse ./experiment.obj --buf-gen --format=vnt --javascript</code>
 
 To enumerate object data
