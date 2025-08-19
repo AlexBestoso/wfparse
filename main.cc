@@ -17,6 +17,70 @@
 
 WavefrontImport objImport;
 
+std::string globFormat="vtn";
+std::string globOutdir = "";
+std::string globOutFile = "";
+std::string globCollectionName="WF_COLLECTION_SED";
+
+size_t commandCount = 13;
+std::string commands[13] = {
+	"--help",
+	"--full-dump",
+	"--obj-dump",
+	"--mtl-dump",
+	"--buf-gen",
+	"--buf-genhelp",
+	"--format=",
+	"--javascript",
+	"--c++",
+	"--raw-grep",
+	"--out-dir=",
+	"--out-file=",
+	"--collection-name="
+};
+
+int fetchCommand(std::string cmd, std::string *out){
+	bool hasInput = false;
+	int inputIndex=0;
+	if(cmd.length() <= 2) return -1;
+	if(cmd[0] != '-' && cmd[1] != '-') return -1;
+	for(int i=2; i<cmd.length(); i++){
+		if(cmd[i] == '='){
+			hasInput = true;
+			inputIndex=i+1;
+			break;
+		}
+	}
+	
+	if(hasInput){
+		if(out == NULL) return -1;
+		if(inputIndex >= cmd.length()) return false;
+		std::string _cmd = "";
+		std::string _val = "";
+		for(int i=0; i<inputIndex-1; i++){
+			_cmd += cmd[i];
+		}
+		for(int i=inputIndex; i<cmd.length(); i++){
+			_val += cmd[i];
+		}
+		for(int i=0; i<commandCount; i++){
+			if(!strncmp(commands[i].c_str(), _cmd.c_str(), _cmd.length())){
+				out[0] = _val;
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	for(int i=0; i<commandCount; i++){
+        	if(!strncmp(commands[i].c_str(), cmd.c_str(), cmd.length())){
+			if(out != NULL) out[0] = "";
+                	return i;
+                }
+        }
+	return -1;
+}
+
 size_t main_command_count = 6;
 std::string main_command_list[] = {
 	"--help",
@@ -24,7 +88,7 @@ std::string main_command_list[] = {
 	"--obj-dump",
 	"--mtl-dump",
 	"--buf-gen",
-	"--buf-gen-help"
+	"--buf-genhelp"
 };
 std::string main_command_help[] = {
 	"Display this help menu.",
@@ -46,6 +110,13 @@ void printUsage(){
 	printf("Usage %s <file.obj> [options]\n", "wfparse");
         printf("Usage --help\n");
 	printf("===== manual =====\n");
+	printf("%s : %s\n", commands[0].c_str(), main_command_help[0].c_str());
+	printf("%s : %s\n", commands[1].c_str(), main_command_help[1].c_str());
+        printf("%s : %s\n", commands[2].c_str(), main_command_help[2].c_str());
+        printf("%s : %s\n", commands[3].c_str(), main_command_help[3].c_str());
+        printf("%s : %s\n", commands[4].c_str(), main_command_help[4].c_str());
+        printf("%s : %s\n", commands[5].c_str(), main_command_help[5].c_str());
+
 	for(int i=0; i<main_command_count; i++){
 		printf("%s : %s\n", main_command_list[i].c_str(), main_command_help[i].c_str());
 	}
@@ -62,12 +133,11 @@ std::string bufGen_command_list[] = {
 std::string bufGen_command_help[] = {
         "Display this help menu.",
         "Set the format of your output data. IE ; vnt to get just vertex normal and textures.\n\t0 v=vertex, only one\n\t1 t=texture, only one\n\t2 n=normal, only one\n\t3 a=color, sourced from material Na\n\t4 d=color, sourced from material Nd\n\t5 s=color, sourced from material Ns\n\t6 e=color, sourced from material Ne\n\t7 1-4=padding, add x digits of 0 padding. min:1, max:4. More than one supported.\n\tEMPTY=vtn. an empty format gives vertex, texture, normal",
-        "Output as a javascript matrix array",
-        "Output as a float array",
-        "Output the data as a raw string of floats."
+        "Output as an array of  javascript class objects",
+        "Output as an array of c++ class objects",
+        "Output the data using a simple grepable format"
 };
 
-std::string globFormat="vtn";
 int parseBufGenCommands(const char *cmd){
         for(int i=0; i<bufGen_command_count; i++){
                 if(!strncmp(cmd, bufGen_command_list[i].c_str(), bufGen_command_list[i].length())) return i;
@@ -94,21 +164,92 @@ void printBufGenUsage(){
 	}
 }
 
+bool writeToFile(std::string data){
+	std::string _file = globOutFile;
+	if(globOutFile == "") _file = "WF_OUTPUT_FILE";
+	std::string _dir = globOutdir;
+	if(globOutdir == "") _dir = "./";
+
+	std::string path = _dir;
+	if(path[path.length()-1] != '/') path += '/';
+	path += _file;
+
+	int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
+	if(!fd) return false;
+	
+	write(fd, data.c_str(), data.length());
+	close(fd);
+	return true;
+}
+
+void truncate(){
+	if(globOutFile == "" && globOutdir == "") return;
+	std::string _file = globOutFile;
+	if(globOutFile == "")
+	std::string _file = globOutFile;
+        if(globOutFile == "") _file = "WF_OUTPUT_FILE";
+        std::string _dir = globOutdir;
+        if(globOutdir == "") _dir = "./";
+
+        std::string path = _dir;
+	if(path[path.length()-1] != '/') path += '/';
+        path += _file;
+
+        int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
+	close(fd);
+}
+
+bool outputBuffer(std::string buffer){
+	if(globOutdir != ""){
+		mkdir(globOutdir.c_str(), 0755);
+		return writeToFile(buffer);
+	}else if(globOutFile != ""){
+		return writeToFile(buffer);
+	}
+
+	printf("%s\n", buffer.c_str());
+	return true;
+}
+
 bool bufGen(int argc, char *argv[]){
-	if(argc < 3) return false;
-	std::string subarg = "--raw-dump";
-	std::string secondArg = "";
-	if(argc >= 4){
-		subarg = argv[3];
+	std::string cmd="";
+	std::string cmd_value="";
+
+	int switchCtrl = -1;
+	for(int i=3; i<argc; i++){
+		cmd = argv[i];
+		int ctrl = fetchCommand(cmd, &cmd_value);
+		if(cmd_value.length() >= 1){
+			switch(ctrl){
+        			case 10:
+					globOutdir = cmd_value;
+					break;
+        			case 11: 
+					globOutFile = cmd_value;
+					break;
+        			case 12: 
+					globCollectionName = cmd_value;
+					break;
+				case 6:
+					globFormat = cmd_value;
+					break;
+			}
+		}else{
+			switch(ctrl){
+			default:	
+				switchCtrl = 5;
+				break;
+			case 7:
+			case 8:
+			case 9:
+				switchCtrl = ctrl;
+				break;
+			}
+		}
+		
 	}
-	if(argc >= 5){
-		secondArg = argv[4];
-	}
-	int result = parseBufGenCommands(subarg.c_str());
-	int result2=parseBufGenCommands(secondArg.c_str());
-	int switchCtrl=result;
-	if(switchCtrl == 1 && result2 != 1 && result2 != -1)
-		switchCtrl = result2;
+
+	printf("Running context %d.\noutdir = %s\nout file = %s\ncollection name = %s\ndata format = %s\n", switchCtrl, globOutdir.c_str(), globOutFile.c_str(), globCollectionName.c_str(), globFormat.c_str());
 	
 	std::string build = "";
 	std::string classNames = "";
@@ -117,7 +258,8 @@ bool bufGen(int argc, char *argv[]){
 		default:
 			printBufGenUsage();
 			return false;
-		case 2: // --javascript
+		case 7: // --javascript
+			truncate();
 			for(int i=0; i<objImport.objCount; i++){
 				for(int j=0; j<objImport.objList[i].object_name.length(); j++){
 					if(objImport.objList[i].object_name[j] == '.')
@@ -156,7 +298,7 @@ bool bufGen(int argc, char *argv[]){
                         		build += "\t\t\t'"+objImport.objList[i].material_map_kd+"',\n";
 
 					build += "\t\t];\n";
-					build += "\t\tthis.gl_stride = " + std::to_string(objImport.gl_stride)+";\n";
+					build += "\t\tthis.gl_stride = " + std::to_string(objImport.objList[i].gl_stride)+";\n";
 					build += "\t\tthis.gl_data = [\n";
 					for(int j=0; j<objImport.objList[i].gl_buffer_size; j++){
 						if((j%objImport.objList[i].gl_stride) == 0) build += "\t\t\t[";
@@ -183,11 +325,11 @@ bool bufGen(int argc, char *argv[]){
 				build += "}\n";
 				build += "let wf_"+objImport.objList[i].object_name + " = new "+"WF_"+objImport.objList[i].object_name+"();";
 				classNames += "wf_"+objImport.objList[i].object_name+"\n";
-				printf("%s\n", build.c_str());
+				outputBuffer(build);
 				build = "";
 			}
 
-			build = "\nlet WF_Collection_ = [";
+			build = "\nlet "+globCollectionName+" = [";
 			line = "";
 			for(int i=0; i<classNames.length(); i++){
 				if(classNames[i] == '\n'){
@@ -198,23 +340,37 @@ bool bufGen(int argc, char *argv[]){
 				line += classNames[i];
 			}
 			build += "];\n";
-			printf("%s\n", build.c_str());
-			break;
-		case 3: // --float-array
-			objImport.genBuffer_format(globFormat.c_str(), 0);
-                        printf("\nsize_t WF_OBJECT_SIZE=%ld;\nfloat WF_OBJECT[%ld] = {", objImport.gl_buffer_size, objImport.gl_buffer_size);
-                        for(int i=0; i<objImport.gl_buffer_size; i++){
-                                if((i%objImport.gl_stride) == 0) printf("\n\t");
 
-                                if(i == objImport.gl_buffer_size-1)
-	                                printf("%f", objImport.gl_buffer[i]);
-				else
-	                                printf("%f, ", objImport.gl_buffer[i]);
-
-                        }
-                        printf("\n};\n");
+			/* check if there's an -o arg and output location, 
+			 * move*/
+			outputBuffer(build);
 			break;
-		case 4: //--raw-dump
+		case 8: // --c++
+			printf("C++ class generation not yet supported\n");
+			return false;
+			for(int i=0; i<objImport.objCount; i++){
+				for(int j=0; j<objImport.objList[i].object_name.length(); j++){
+                                        if(objImport.objList[i].object_name[j] == '.')
+                                                objImport.objList[i].object_name[j]='_';
+                                }
+                                objImport.genBuffer_format(globFormat.c_str(), i);
+
+				objImport.genBuffer_format(globFormat.c_str(), 0);
+	                        printf("\nsize_t WF_OBJECT_SIZE=%ld;\nfloat WF_OBJECT[%ld] = {", objImport.gl_buffer_size, objImport.gl_buffer_size);
+	                        for(int i=0; i<objImport.gl_buffer_size; i++){
+	                                if((i%objImport.gl_stride) == 0) printf("\n\t");
+
+	                                if(i == objImport.gl_buffer_size-1)
+		                                printf("%f", objImport.gl_buffer[i]);
+					else
+		                                printf("%f, ", objImport.gl_buffer[i]);
+	
+                        	}
+                        	printf("\n};\n");
+			}
+			break;
+		case 9: //--raw-grep
+			printf("grepable data generation not supported");
 			objImport.genBuffer_format(globFormat.c_str(), 0);
 			printf("Raw Buffer : \n");
 			for(int i=0; i<objImport.gl_buffer_size; i++){
@@ -228,20 +384,46 @@ bool bufGen(int argc, char *argv[]){
 	}
 	return true;
 }
+
 int main(int argc, char *argv[]){
-	if(argc < 2){
+	if(argc < 3){
 		printUsage();
 		return 1;
 	}
 	
 	objImport.new_import(argv[1]);
+	
+	std::string cmd = "";
+	if(argc >= 3) cmd = argv[2];
+	int switchCtrl = fetchCommand(cmd, NULL);
+	switch(switchCtrl){
+		default:
+			printUsage();
+			break;
+        	case 1: // "--full-dump",
+			objImport.dumpObjFile();
+			objImport.dumpMtlFile();
+			break;
+        	case 2: // "--obj-dump",
+			objImport.dumpObjFile();
+			break;
+        	case 3: // "--mtl-dump",
+			objImport.dumpMtlFile();
+			break;
+        	case 4: // "--buf-gen",
+			bufGen(argc, argv);
+			break;
+        	case 5: // "--buf-genhelp",
+			printBufGenUsage();
+			break;
+	}
 
 	/*if(!objImport.import(argv[1])){
 		printf("[E] Failed to import file \n");
 		printUsage();
 		return 1;
 	}*/
-
+/*
 		
 	std::string cmd = "";
 	if(argc > 2) cmd = argv[2];
@@ -267,4 +449,6 @@ int main(int argc, char *argv[]){
 			break;
 	}
 		return 0;
+*/
+	return 0;
 }

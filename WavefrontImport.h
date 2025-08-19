@@ -223,60 +223,60 @@ class WavefrontImport{
 		void dumpObjFile(){
 			printf("Loaded file (%ld bytes) '%s'\n", this->objFileSize, this->objFileName.c_str());
 			
-			printf("Imported Object Name '%s'\n", this->waveobj.object_name.c_str());
-                	printf("Imported %ld vertecies\n", this->waveobj.object_vertex_size);
-			for(int i=0; i<this->waveobj.object_vertex_size; i++){
-				printf("(%f, %f, %f)\n", this->waveobj.object_vertex[i][0], this->waveobj.object_vertex[i][1], this->waveobj.object_vertex[i][2]);
-			}
-                	printf("Imported %ld texteture points\n", this->waveobj.object_texture_size);
-			for(int i=0; i<this->waveobj.object_texture_size; i++){
-				printf("(%f, %f)\n", this->waveobj.object_texture[i][0], this->waveobj.object_texture[i][1]);
-			}
-                	printf("Imported %ld normals\n", this->waveobj.object_normal_size);
-			for(int i=0; i<this->waveobj.object_normal_size; i++){
-				printf("(%f, %f, %f)\n", this->waveobj.object_normal[i][0], this->waveobj.object_normal[i][1], this->waveobj.object_normal[i][2]);
-			}
-                	printf("Imported %ld faces\n", this->waveobj.object_face_size);
-			for(int i=0; i<this->waveobj.object_face_size; i++){
-				printf("\tface %d: ", i);
-				printf("(");
-				for(int j=0; j<this->waveobj.object_face[i].count; j++){
-					printf("%d ", this->waveobj.object_face[i].v_index[j]);
+			for(int j=0; j<this->objCount; j++){
+				printf("Imported Object Name '%s'\n", this->objList[j].object_name.c_str());
+                		printf("Imported %ld vertecies\n", this->objList[j].object_vertex_size);
+				for(int i=0; i<this->objList[j].object_vertex_size; i++){
+					printf("(%f, %f, %f)\n", this->objList[j].object_vertex[i][0], this->objList[j].object_vertex[i][1], this->objList[j].object_vertex[i][2]);
 				}
-				printf(") ");
-				printf("(");
-				for(int j=0; j<this->waveobj.object_face[i].count; j++){
-					printf("%d ", this->waveobj.object_face[i].vt_index[j]);
+                		printf("Imported %ld texteture points\n", this->objList[j].object_texture_size);
+				for(int i=0; i<this->objList[j].object_texture_size; i++){
+					printf("(%f, %f)\n", this->objList[j].object_texture[i][0], this->objList[j].object_texture[i][1]);
 				}
-				printf(") ");
-				printf("(");
-				for(int j=0; j<this->waveobj.object_face[i].count; j++){
-					printf("%d ", this->waveobj.object_face[i].vn_index[j]);
+                		printf("Imported %ld normals\n", this->objList[j].object_normal_size);
+				for(int i=0; i<this->objList[j].object_normal_size; i++){
+					printf("(%f, %f, %f)\n", this->objList[j].object_normal[i][0], this->objList[j].object_normal[i][1], this->objList[j].object_normal[i][2]);
 				}
-				printf(")\n");
-
-
-			}			
+                		printf("Imported %ld faces\n", this->objList[j].object_face_size);
+				for(int i=0; i<this->objList[j].object_face_size; i++){
+					printf("\tface %d: ", i);
+					printf("(");
+					for(int k=0; k<this->objList[j].object_face[i].count; k++){
+						printf("%d ", this->objList[j].object_face[i].v_index[k]);
+					}
+					printf(") ");
+					printf("(");
+					for(int k=0; k<this->objList[j].object_face[i].count; k++){
+						printf("%d ", this->objList[j].object_face[i].vt_index[k]);
+					}
+					printf(") ");
+					printf("(");
+					for(int k=0; k<this->objList[j].object_face[i].count; k++){
+						printf("%d ", this->objList[j].object_face[i].vn_index[k]);
+					}
+					printf(")\n");
+				}			
 	
-			printf("Target Material File : '%s'\n", this->waveobj.object_mtllib.c_str());
-			printf("Target Material Name : '%s'\n", this->waveobj.object_material.c_str());
+				printf("Target Material File : '%s'\n", this->objList[j].object_mtllib.c_str());
+				printf("Target Material Name : '%s'\n", this->objList[j].object_material.c_str());
 
-			/*for(int i=0;i<this->objFileSize;i++){
-				printf("%c", this->objFileBuffer[i]);
-			}printf("\n\n");*/
+			}
+			printf("\n\n");
 		}
 
 		void dumpMtlFile(){
-			printf("\n===Objects Material '%s'===\n", this->waveobj.material_name.c_str());
-			printf("Material Ns : %f\n", this->waveobj.material_ns);
-			printf("Material Ka : (%f, %f, %f)\n", this->waveobj.material_ka[0], this->waveobj.material_ka[1], this->waveobj.material_ka[2]);
-			printf("Material Kd : (%f, %f, %f)\n", this->waveobj.material_kd[0], this->waveobj.material_kd[1], this->waveobj.material_kd[2]);
-			printf("Material Ks : (%f, %f, %f)\n", this->waveobj.material_ks[0], this->waveobj.material_ks[1], this->waveobj.material_ks[2]);
-			printf("Material Ke : (%f, %f, %f)\n", this->waveobj.material_ke[0], this->waveobj.material_ke[1], this->waveobj.material_ke[2]);
-			printf("Material Ni : %f\n", this->waveobj.material_ni);
-			printf("Material d : %f\n", this->waveobj.material_d);
-			printf("Material illum : %f\n", this->waveobj.material_illum);
-			printf("Material map_Kd : '%s'\n", this->waveobj.material_map_kd.c_str());
+			for(int i=0; i<this->objCount; i++){
+				printf("\n===%s's Material '%s'===\n", this->objList[i].object_name.c_str(), this->objList[i].material_name.c_str());
+				printf("Material Ns : %f\n", this->objList[i].material_ns);
+				printf("Material Ka : (%f, %f, %f)\n", this->objList[i].material_ka[0], this->objList[i].material_ka[1], this->objList[i].material_ka[2]);
+				printf("Material Kd : (%f, %f, %f)\n", this->objList[i].material_kd[0], this->objList[i].material_kd[1], this->objList[i].material_kd[2]);
+				printf("Material Ks : (%f, %f, %f)\n", this->objList[i].material_ks[0], this->objList[i].material_ks[1], this->objList[i].material_ks[2]);
+				printf("Material Ke : (%f, %f, %f)\n", this->objList[i].material_ke[0], this->objList[i].material_ke[1], this->objList[i].material_ke[2]);
+				printf("Material Ni : %f\n", this->objList[i].material_ni);
+				printf("Material d : %f\n", this->objList[i].material_d);
+				printf("Material illum : %f\n", this->objList[i].material_illum);
+				printf("Material map_Kd : '%s'\n", this->objList[i].material_map_kd.c_str());
+			}
 
 		}
 
