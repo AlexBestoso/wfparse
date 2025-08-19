@@ -164,6 +164,49 @@ void printBufGenUsage(){
 	}
 }
 
+bool transferTexture(std::string target){
+	int fd = open(target.c_str(), O_RDONLY);
+	if(!fd) return false;
+	struct stat st;
+	if(fstat(fd, &st)){
+		close(fd);
+	}
+	if(st.st_size <= 0){
+		close(fd);
+		return false;
+	}
+	char buffer[st.st_size] = {0};
+	if(read(fd, buffer, st.st_size) != st.st_size){
+		close(fd);
+		return false;
+	}
+	close(fd);
+	
+	std::string _file = "";
+	for(int i=0; i<target.length(); i++){
+		if(target[i] == '/') _file="";
+		_file += target[i];
+	}
+        std::string _dir = globOutdir;
+        if(globOutdir == "") _dir = "./";
+
+        std::string path = _dir;
+        if(path[path.length()-1] != '/') path += '/';
+        path += _file;
+	if(target == path) return false;
+	
+	fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0755);
+	if(!fd) return false;
+
+	if(write(fd, buffer, st.st_size) != st.st_size){
+		close(fd);
+		return false;
+	}
+	close(fd);
+
+	return true;
+}
+
 bool writeToFile(std::string data){
 	std::string _file = globOutFile;
 	if(globOutFile == "") _file = "WF_OUTPUT_FILE";
@@ -295,8 +338,19 @@ bool bufGen(int argc, char *argv[]){
                         		build += "\t\t\t"+std::to_string(objImport.objList[i].material_ni)+",\n";
                         		build += "\t\t\t"+std::to_string(objImport.objList[i].material_d)+",\n";
                         		build += "\t\t\t"+std::to_string(objImport.objList[i].material_illum)+",\n";
-                        		build += "\t\t\t'"+objImport.objList[i].material_map_kd+"',\n";
-
+		
+					
+					if(!transferTexture(objImport.objList[i].material_map_kd)){
+	                        		build += "\t\t\t'"+objImport.objList[i].material_map_kd+"',\n";
+					}else{
+						std::string _dir = globOutdir;
+        					if(globOutdir == "") _dir = "./";
+	
+        					std::string path = _dir;
+        					if(path[path.length()-1] != '/') path += '/';
+        					path += objImport.objList[i].material_map_kd;
+	                        		build += "\t\t\t'"+path+"',\n";
+					}
 					build += "\t\t];\n";
 					build += "\t\tthis.gl_stride = " + std::to_string(objImport.objList[i].gl_stride)+";\n";
 					build += "\t\tthis.gl_data = [\n";
