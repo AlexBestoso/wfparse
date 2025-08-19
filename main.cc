@@ -236,11 +236,11 @@ int main(int argc, char *argv[]){
 	
 	objImport.new_import(argv[1]);
 
-	if(!objImport.import(argv[1])){
+	/*if(!objImport.import(argv[1])){
 		printf("[E] Failed to import file \n");
 		printUsage();
 		return 1;
-	}
+	}*/
 
 		
 	std::string cmd = "";

@@ -351,7 +351,8 @@ class WavefrontObject{
 				line += this->mtl_data[i];
 				if(this->mtl_data[i] == '\n'){
 					if(!strncmp(line.c_str(), test.c_str(), test.length())){
-						this->material_name = this->object_material;
+						for(int j=7; j<line.length()-1; j++)
+							this->material_name += line[j];
 						return true;
 					}
 					line="";
@@ -482,8 +483,11 @@ class WavefrontObject{
                                                 std::string data="";
 						int J=0;
                                                 for(int j=3; j<line.length(); j++){
-							if(J>= 3) return true;
+							if(J>= 3){
+								return true;
+							}
 							if(line[j] == ' ' || line[j] == '\n'){
+								
 								this->material_ka[J] = std::stof(data.c_str());
 								data = "";
 								J++;
@@ -491,10 +495,11 @@ class WavefrontObject{
 							}
                                                         data += line[j];
                                                 }
+						return true;
                                         }
                                         line="";
                                 }
-                        }
+                        }	
                         return false;
                 }
 
@@ -530,6 +535,7 @@ class WavefrontObject{
 							}
                                                         data += line[j];
                                                 }
+						return true;
                                         }
                                         line="";
                                 }
@@ -569,6 +575,7 @@ class WavefrontObject{
 							}
                                                         data += line[j];
                                                 }
+						return true;
                                         }
                                         line="";
                                 }
@@ -608,6 +615,7 @@ class WavefrontObject{
 							}
                                                         data += line[j];
                                                 }
+						return true;
                                         }
                                         line="";
                                 }
@@ -645,6 +653,7 @@ class WavefrontObject{
 							this->material_illum = std::stof(data);
 							return true;
 						}
+						return true;
 					}
                                         line="";
                                 }
@@ -795,6 +804,7 @@ class WavefrontObject{
                                 printf("Failed to  import material.\n");
                                 return false;
                         }
+			
 
 			return true;
 		}
