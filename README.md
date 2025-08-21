@@ -12,3 +12,34 @@ To generate javascript classes for use in WebGl, contains material and formatted
 
 To enumerate object data
 <code>./wfparse ./experiment.obj --full-dump</code>
+
+To use the javascript code, you will need to use a class for the materials. Here is the class:
+
+<code>
+/* BestosoTech WebGL Material */
+class BtWebglMaterial {
+	name=null;
+	ns=null;
+	ka=null;
+	kd=null;
+	ks=null;
+	ke=null;
+	ni=null;
+	d=null;
+	illum=null;
+	mapKd=null;
+
+	constructor(name, ns, ka, kd, ks, ke, ni, d, illum, mapKd){
+		this.name=name;
+		this.ns = ns;
+		this.ka = ka;
+		this.kd = kd;
+		this.ks = ks;
+		this.ke = ke;
+		this.ni = ni;
+		this.d = d;
+		this.illum = illum;
+		this.mapKd = mapKd;
+	}
+}
+</code>

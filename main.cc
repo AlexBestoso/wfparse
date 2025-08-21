@@ -135,7 +135,10 @@ std::string bufGen_command_help[] = {
         "Set the format of your output data. IE ; vnt to get just vertex normal and textures.\n\t0 v=vertex, only one\n\t1 t=texture, only one\n\t2 n=normal, only one\n\t3 a=color, sourced from material Na\n\t4 d=color, sourced from material Nd\n\t5 s=color, sourced from material Ns\n\t6 e=color, sourced from material Ne\n\t7 1-4=padding, add x digits of 0 padding. min:1, max:4. More than one supported.\n\tEMPTY=vtn. an empty format gives vertex, texture, normal",
         "Output as an array of  javascript class objects",
         "Output as an array of c++ class objects",
-        "Output the data using a simple grepable format"
+        "Output the data using a simple grepable format",
+	"Set the output directory for your generated files. If no file name is selected, a default one is used.",
+	"Set the output file for your generated files. If no directory is selected, it's made in the current working directory.",
+	"Set the variable name of your collection of objects."
 };
 
 int parseBufGenCommands(const char *cmd){
@@ -159,12 +162,18 @@ void printBufGenUsage(){
 	printf("Usage %s [options]\n", "--buf-gen");
         printf("Usage : --help\n");
 	printf("===== manual =====\n");
-	for(int i=0; i<bufGen_command_count; i++){
-		printf("%s : %s\n", bufGen_command_list[i].c_str(), bufGen_command_help[i].c_str());
-	}
+        printf("%s : %s\n", commands[5].c_str(), bufGen_command_help[0].c_str());
+        printf("%s : %s\n", commands[6].c_str(), bufGen_command_help[1].c_str());
+        printf("%s : %s\n", commands[7].c_str(), bufGen_command_help[2].c_str());
+        //8"--c++",
+        //9"--raw-grep",
+        printf("%s : %s\n", commands[10].c_str(), bufGen_command_help[5].c_str());
+        printf("%s : %s\n", commands[11].c_str(), bufGen_command_help[6].c_str());
+        printf("%s : %s\n", commands[12].c_str(), bufGen_command_help[7].c_str());
 }
 
 bool transferTexture(std::string target){
+	if(target == "")return false;
 	int fd = open(target.c_str(), O_RDONLY);
 	if(!fd) return false;
 	struct stat st;
@@ -304,44 +313,49 @@ bool bufGen(int argc, char *argv[]){
 		case 7: // --javascript
 			truncate();
 			for(int i=0; i<objImport.objCount; i++){
+				std::string OG_name = objImport.objList[i].object_name;
 				for(int j=0; j<objImport.objList[i].object_name.length(); j++){
 					if(objImport.objList[i].object_name[j] == '.')
 						objImport.objList[i].object_name[j]='_';
 				}					
 				objImport.genBuffer_format(globFormat.c_str(), i);
-				build += "/*\n\tBuilt lovingly with wfparse\n */\n";
+				build += "\n/*\n\tBuilt lovingly with wfparse\n */\n";
 				build += "class WF_"+objImport.objList[i].object_name+"{\n";
-				build += "\tgl_stride = null;\n";
-				build += "\tgl_data = null;\n";
-				build += "\tgl_material = null;\n";
+				build += "\tstride = null;\n";
+				build += "\tdata = null;\n";
+				build += "\tmaterial = null;\n";
+				build += "\tname=null;\n";
+				build += "\ttexture=null\n";
 
 				build += "\tconstructor(){\n";
-					build += "\t\tthis.gl_material = [\n";
-                        		build += "\t\t\t'"+objImport.objList[i].material_name+"',\n";
-					build += "\t\t\t"+std::to_string(objImport.objList[i].material_ns)+",\n";
-                        		build += "\t\t\t[" + std::to_string(objImport.objList[i].material_ka[0]) + ", " +
-							     std::to_string(objImport.objList[i].material_ka[1]) + ", " +
-							     std::to_string(objImport.objList[i].material_ka[2]) +
-							 "],\n";
-                        		build += "\t\t\t[" + std::to_string(objImport.objList[i].material_kd[0]) + ", " +
-							     std::to_string(objImport.objList[i].material_kd[1]) + ", " +
-							     std::to_string(objImport.objList[i].material_kd[2]) +
-							 "],\n";
-                        		build += "\t\t\t[" + std::to_string(objImport.objList[i].material_ks[0]) + ", " +
-							     std::to_string(objImport.objList[i].material_ks[1]) + ", " +
-							     std::to_string(objImport.objList[i].material_ks[2]) +
-							"],\n";
-                        		build += "\t\t\t[" + std::to_string(objImport.objList[i].material_ke[0]) + ", " + 
-							     std::to_string(objImport.objList[i].material_ke[1]) + ", " +
-							     std::to_string(objImport.objList[i].material_ke[2]) +
-							"],\n";
-                        		build += "\t\t\t"+std::to_string(objImport.objList[i].material_ni)+",\n";
-                        		build += "\t\t\t"+std::to_string(objImport.objList[i].material_d)+",\n";
-                        		build += "\t\t\t"+std::to_string(objImport.objList[i].material_illum)+",\n";
-		
-					
+					build += "\t\tthis.name = '"+OG_name+"';\n";
+					build += "\t\ttry{\n";
+					build += "\t\t\tthis.material=new BtWebglMaterial(\n\t\t\t\t'" +
+						objImport.objList[i].material_name + "', " +
+			
+						std::to_string(objImport.objList[i].material_ns) + ", \n\t\t\t\t[" +
+
+						std::to_string(objImport.objList[i].material_ka[0]) + ", "+
+						std::to_string(objImport.objList[i].material_ka[1]) + ", "+
+						std::to_string(objImport.objList[i].material_ka[2]) + "], \n\t\t\t\t["+
+
+						std::to_string(objImport.objList[i].material_kd[0]) + ", "+
+						std::to_string(objImport.objList[i].material_kd[1]) + ", "+
+						std::to_string(objImport.objList[i].material_kd[2]) + "], \n\t\t\t\t["+
+
+						std::to_string(objImport.objList[i].material_ks[0]) + ", " +
+						std::to_string(objImport.objList[i].material_ks[1]) + ", " +
+						std::to_string(objImport.objList[i].material_ks[2]) + "], \n\t\t\t\t[" +
+							
+						std::to_string(objImport.objList[i].material_ke[0]) + ", " +
+						std::to_string(objImport.objList[i].material_ke[1]) + ", " +
+						std::to_string(objImport.objList[i].material_ke[2]) + "], \n\t\t\t\t" +
+
+						std::to_string(objImport.objList[i].material_ni) + ", \n\t\t\t\t"+
+						std::to_string(objImport.objList[i].material_d) + ", \n\t\t\t\t" +
+						std::to_string(objImport.objList[i].material_illum) + ", \n\t\t\t\t";
 					if(!transferTexture(objImport.objList[i].material_map_kd)){
-	                        		build += "\t\t\t'"+objImport.objList[i].material_map_kd+"',\n";
+	                        		build += "'"+objImport.objList[i].material_map_kd+"');\n";
 					}else{
 						std::string _dir = globOutdir;
         					if(globOutdir == "") _dir = "./";
@@ -349,11 +363,13 @@ bool bufGen(int argc, char *argv[]){
         					std::string path = _dir;
         					if(path[path.length()-1] != '/') path += '/';
         					path += objImport.objList[i].material_map_kd;
-	                        		build += "\t\t\t'"+path+"',\n";
+	                        		build += "'"+path+"');\n";
 					}
-					build += "\t\t];\n";
-					build += "\t\tthis.gl_stride = " + std::to_string(objImport.objList[i].gl_stride)+";\n";
-					build += "\t\tthis.gl_data = [\n";
+
+					build += "\t\t}catch(e){\n\t\t\tconsole.log(e+' : Try adding \"defer\" to your script tag for this file if the material class has been defined.');\n\t\t}\n";
+
+					build += "\t\tthis.stride = " + std::to_string(objImport.objList[i].gl_stride)+";\n";
+					build += "\t\tthis.data = [\n";
 					for(int j=0; j<objImport.objList[i].gl_buffer_size; j++){
 						if((j%objImport.objList[i].gl_stride) == 0) build += "\t\t\t[";
 				
@@ -364,17 +380,6 @@ bool bufGen(int argc, char *argv[]){
 					}
 					build += "\t\t];\n";
 				build += "\t}\n";
-
-                        	build += "\tgetMaterialName(){return this.gl_material[0];}\n";
-				build += "\tgetMaterialNs(){return this.gl_material[1];}\n";
-                        	build += "\tgetMaterialKa(){return this.gl_material[2];}\n";
-                        	build += "\tgetMaterialKd(){return this.gl_material[3];}\n";
-                        	build += "\tgetMaterialKs(){return this.gl_material[4];}\n";
-                        	build += "\tgetMaterialKe(){return this.gl_material[5];}\n";
-                        	build += "\tgetMaterialNi(){return this.gl_material[6];}\n";
-                        	build += "\tgetMaterialD(){return this.gl_material[7];}\n";
-                        	build += "\tgetMaterialIllum(){return this.gl_material[8];}\n";
-                        	build += "\tgetMaterialMapKd(){return this.gl_material[9];}\n";
 
 				build += "}\n";
 				build += "let wf_"+objImport.objList[i].object_name + " = new "+"WF_"+objImport.objList[i].object_name+"();";
@@ -442,7 +447,9 @@ bool bufGen(int argc, char *argv[]){
 int main(int argc, char *argv[]){
 	if(argc < 3){
 		printUsage();
-		return 1;
+		printf("\n");
+		printBufGenUsage();
+		exit(EXIT_FAILURE);
 	}
 	
 	objImport.new_import(argv[1]);
@@ -471,38 +478,5 @@ int main(int argc, char *argv[]){
 			printBufGenUsage();
 			break;
 	}
-
-	/*if(!objImport.import(argv[1])){
-		printf("[E] Failed to import file \n");
-		printUsage();
-		return 1;
-	}*/
-/*
-		
-	std::string cmd = "";
-	if(argc > 2) cmd = argv[2];
-	switch(parseMainCommands(cmd.c_str())){
-		case 0: // --help
-			printUsage();
-			break;
-        	case 2: //--obj-dump
-			objImport.dumpObjFile();
-			break;
-		case 3: //--mtl-dump
-			objImport.dumpMtlFile();
-			break;
-		case 4: //--buf-gen
-			bufGen(argc, argv);
-			break;
-		case 5: //--buf-gen-help
-			printBufGenUsage();
-			break;
-		default: // --full-dump
-			objImport.dumpObjFile();
-			objImport.dumpMtlFile();
-			break;
-	}
-		return 0;
-*/
-	return 0;
+	exit(EXIT_SUCCESS);
 }
