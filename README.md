@@ -15,7 +15,7 @@ To enumerate object data
 
 To use the javascript code, you will need to use a class for the materials. Here is the class:
 
-<code>
+```
 class BtWebglMaterial {
     name=null;
     ns=null;
@@ -40,4 +40,4 @@ class BtWebglMaterial {
 	this.mapKd = mapKd;
     }
 }
-</code>
+```
