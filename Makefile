@@ -3,4 +3,4 @@ all:
 	./commandCompile.sh
 	g++ main.cc -ldl -o wfparse
 clean:
-	rm ./bin/*
+	rm -rf ./bin

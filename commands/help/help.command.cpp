@@ -1,6 +1,6 @@
 #include "./help.command.h"
 extern "C"{
-	HelpCommand *create(){
+	HelpCommand *create(void){
 		return new HelpCommand();
 	}
 	void destroy(HelpCommand *ptr){

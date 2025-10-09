@@ -11,78 +11,79 @@ class HelpCommand : public Command{
 	private:
 
 	public:
-	HelpCommand();
-	~HelpCommand() = default;
+		HelpCommand();
+		~HelpCommand() = default;
 
-	unsigned int soCount=0;
-	std::string outNames="";
+		unsigned int soCount=0;
+		std::string outNames="";
 
-	void countSharedObjects(void){
-		this->soCount = 0;
-		struct dirent *de;
-		DIR *dr = opendir("./bin");
-		if(dr == NULL){
-			throw "No shared objects detected, program cannot function!\n";
-		}
+		void countSharedObjects(void){
+			this->soCount = 0;
+			struct dirent *de;
+			DIR *dr = opendir("./bin");
+			if(dr == NULL){
+				throw "No shared objects detected, program cannot function!\n";
+			}
 	
-		this->outNames = "";
-		while((de = readdir(dr)) != NULL){
-			std::string name = de->d_name;
-			if(name.length() > 3){
-				this->soCount++;
-				this->outNames += name;
-				this->outNames += "\n";
+			this->outNames = "";
+			while((de = readdir(dr)) != NULL){
+				std::string name = de->d_name;
+				if(name.length() > 3){
+					this->soCount++;
+					this->outNames += name;
+					this->outNames += "\n";
+				}
 			}
+			closedir(dr);
 		}
-		closedir(dr);
-	}
 
-	std::string getCommandName(int idx){
-		std::string grabber = "";
-		int track = -1;
-		for(int i=0; i<outNames.length(); i++){
-			if(outNames[i] == '\n'){
-				track++;
-				if(track == idx)
-					return grabber;
-				grabber = "";
-			}else{
-				grabber += outNames[i];
+		std::string getCommandName(int idx){
+			std::string grabber = "";
+			int track = -1;
+			for(int i=0; i<outNames.length(); i++){
+				if(outNames[i] == '\n'){
+					track++;
+					if(track == idx)
+						return grabber;
+					grabber = "";
+				}else{
+					grabber += outNames[i];
+				}
 			}
+			return "";
 		}
-		return "";
-	}
 
-	void *loadCommandHandle(std::string name){
-		std::string command = "./bin/";
-		command += name;
-		void *ret = dlopen(command.c_str(), RTLD_LAZY);
-		if(!ret) return NULL;
-		return ret;
-	}
+		void *loadCommandHandle(std::string name){
+			std::string command = "./bin/";
+			command += name;
+			void *ret = dlopen(command.c_str(), RTLD_LAZY);
+			if(!ret) return NULL;
+			return ret;
+		}
 
-	command_t createInvoker(void *handle){
-		command_t ret = reinterpret_cast<command_t>(dlsym(handle, "create"));
-		dlerror();
-		return ret;
-	}
+		command_t createInvoker(void *handle){
+			command_t ret = reinterpret_cast<command_t>(dlsym(handle, "create"));
+			dlerror();
+			return ret;
+		}
 
-	void printManuals(void){
-		this->countSharedObjects();
-		for(int i=0; i<this->soCount; i++){
-			std::string target = this->getCommandName(i);
-			void *handle = this->loadCommandHandle(target);
-			if(handle == NULL) continue;
-			command_t invoker = createInvoker(handle);
-			Command *cmd = invoker();
-			std::string name = cmd->getName();
-			std::string desc = cmd->getDescription();
-			std::string man = cmd->getManual();
+		void printManuals(void){
+			this->countSharedObjects();
+			for(int i=0; i<this->soCount; i++){
+				std::string target = this->getCommandName(i);
+				void *handle = this->loadCommandHandle(target);
+				if(handle == NULL) continue;
+				command_t invoker = createInvoker(handle);
+				Command *cmd = invoker();
+				std::string name = cmd->getName();
+				std::string desc = cmd->getDescription();
+				std::string man = cmd->getManual();
 			
-			printf("\n%s - %s\n\t%s\n", name.c_str(), desc.c_str(), man.c_str());
-			dlclose(handle);
+				printf("\n%s - %s\n\t%s\n", name.c_str(), desc.c_str(), man.c_str());
+				dlclose(handle);
+			}
+		
 		}
 		
-	}
-	bool exec(void) override;
+		bool exec(void) override;
 };
