@@ -1,27 +1,32 @@
-#define WF_FMT_V 0
-#define WF_FMT_T 1
-#define WF_FMT_N 2
-#define WF_FMT_A 3
-#define WF_FMT_D 4
-#define WF_FMT_S 5
-#define WF_FMT_E 6
-#define WF_FMT_1 7
-#define WF_FMT_2 8
-#define WF_FMT_3 9
-#define WF_FMT_4 10
-#define WF_FMT_KD 11
 
+struct WavefrontPoint{
+	unsigned int index_vertex;
+	unsigned int index_texture;
+	unsigned int index_normal;
+};
+typedef WavefrontPoint wf_point_t;
 
 struct WavefrontFace{
 	size_t count;
 	int *v_index;
 	int *vt_index;
 	int *vn_index;
+
+	size_t pointsCount;
+	wf_point_t *points;
 };
+typedef WavefrontFace wf_face_t;
+
+struct Wavefront_Object_Struct{
+	std::string name;
+	std::string material_name;
+	size_t faceCount;
+	wf_face_t *faces;
+};
+typedef Wavefront_Object_Struct wf_object_t;
+
 class WavefrontObject{
 	private:
-		
-		
 		bool import_obj_texture(void){
 			if(this->object_texture){
 				for(int i=0; i<this->object_texture_size; i++)
@@ -786,6 +791,8 @@ class WavefrontObject{
 
 		}
 
+		
+
 		bool import_obj(const char *mtlTarget, float **v, size_t vSize, float **vn, size_t vnSize, float **vt, size_t vtSize, char *data, size_t dataSize){
 			this->obj_data = data;
 			this->obj_data_size = dataSize;
@@ -1032,4 +1039,650 @@ class WavefrontObject{
 			return true;
 		}
 
+};
+
+struct Wavefront_Material_Struct{
+	std::string material_name;
+	std::string material_map_kd; 	// location of texture map
+	float material_ns;      	// specular highlights
+	float material_ka[3]; 		// ambient color
+	float material_kd[3]; 		// diffuse color
+	float material_ks[3]; 		// specular color
+	float material_ke[3];		// dont know :p
+	float material_ni;      	// Optical Density
+	float material_d;       	// Dissolve
+	float material_illum;   	// illumination model
+};
+typedef Wavefront_Material_Struct wf_material_t;
+
+struct Wavefront_Material_Collection_Struct{
+	std::string name; // collection name
+	size_t materialCount;
+	wf_material_t *materials;
+};
+typedef struct Wavefront_Material_Collection_Struct wf_material_collection_t;
+
+struct Wavefront_Collection_Struct{
+	std::string name; // collection name
+	std::string mtllib; // target material library.
+	size_t objectCount;
+	wf_object_t *objects; // there are objectCount raw datas
+	size_t *faceCount; // there are objectCount face counts.
+	wf_face_t **objectFaces; // there n is object count, m is nth face count.
+	std::string *objectMaterial; // object count of material names.
+	
+	size_t vertexCount; 	// this is totaled throughout the entire collection.
+	size_t textureCount; 	// totaled throughout
+	size_t normalCount; 	// totaled throughout
+	float **vertexData;	// array of 3 cell floats
+	float **normalData;	// array of 3 cell floats
+	float **textureData;	// array of 2 cell floats
+
+	
+};
+typedef struct Wavefront_Collection_Struct wf_collection_t;
+
+class WavefrontMaterialCollection{
+	private:
+		bool debugOutput=true;
+		size_t fileBufferSize;
+                char *fileBuffer;
+
+		bool validObjElement(std::string line, std::string target){
+                        std::string word = "";
+                        for(int i=0; i<line.length(); i++){
+                                if(line[i] == ' ')break;
+                                word += line[i];
+                        }
+                        if(word == target) return true;
+                        return false;
+                }
+
+		void setError(const char *msg, int code){
+                        this->error = code;
+                        this->errorMessage = msg;
+                }
+
+		void initData(void){
+			this->data.name = ""; // collection name
+        		this->data.materialCount = 0;
+        		this->data.materials = NULL;
+		}
+
+		void countMaterials(void){
+			std::string line="";
+			this->data.materialCount = 0;
+			if(this->data.materials){
+				delete[] this->data.materials;
+			}
+			for(int i=0; i<fileBufferSize; i++){
+				line += fileBuffer[i];
+				if(fileBuffer[i] == '\n'){
+					if(validObjElement(line, "newmtl")){
+						this->data.materialCount++;
+					}
+					line="";
+				}
+			}
+			if(this->data.materialCount > 0)
+				this->data.materials = new wf_material_t[this->data.materialCount];
+		}
+
+		void fetchMaterials(void){
+			int index=-1;
+			std::string line = "";
+			for(int i=0; i<this->fileBufferSize; i++){
+				line += fileBuffer[i];
+				if(fileBuffer[i] == '\n'){
+					if(this->validObjElement(line, "newmtl")){
+						index++;
+						std::string value = "";
+						for(int j=7; j<line.length()-1; j++){
+							value += line[j];
+						}
+						this->data.materials[index].material_name = value;
+					}
+
+					if(this->validObjElement(line, "map_Kd")){
+                                                std::string value = "";
+                                                for(int j=7; j<line.length(); j++){
+                                                        value += line[j];
+                                                }
+                                                this->data.materials[index].material_map_kd = value;
+                                        }
+
+					if(this->validObjElement(line, "Ns")){
+                                                std::string value = "";
+                                                for(int j=3; j<line.length(); j++){
+                                                        value += line[j];
+                                                }
+                                                this->data.materials[index].material_ns = std::stof(value.c_str());
+                                        }
+
+					if(this->validObjElement(line, "Ni")){
+                                                std::string value = "";
+                                                for(int j=3; j<line.length(); j++){
+                                                        value += line[j];
+                                                }
+                                                this->data.materials[index].material_ni = std::stof(value.c_str());
+                                        }
+				
+					if(this->validObjElement(line, "d")){
+                                                std::string value = "";
+                                                for(int j=2; j<line.length(); j++){
+                                                        value += line[j];
+                                                }
+                                                this->data.materials[index].material_d = std::stof(value.c_str());
+                                        }
+
+					if(this->validObjElement(line, "illum")){
+                                                std::string value = "";
+                                                for(int j=6; j<line.length(); j++){
+                                                        value += line[j];
+                                                }
+                                                this->data.materials[index].material_illum = std::stof(value.c_str());
+                                        }
+
+					if(this->validObjElement(line, "Ka")){
+						int subIndex=0;
+                                                std::string value = "";
+                                                for(int j=3; j<line.length(); j++){
+							if(line[j] == ' ' || line[j] == '\n'){
+								if(subIndex >= 3) continue;
+								this->data.materials[index].material_ka[subIndex] = std::stof(value.c_str());
+								subIndex++;
+								value="";
+							}else{
+                                                        	value += line[j];
+							}
+                                                }
+                                        }
+			
+					if(this->validObjElement(line, "Kd")){
+						int subIndex=0;
+                                                std::string value = "";
+                                                for(int j=3; j<line.length(); j++){
+							if(line[j] == ' ' || line[j] == '\n'){
+								if(subIndex >= 3) continue;
+								this->data.materials[index].material_kd[subIndex] = std::stof(value.c_str());
+								subIndex++;
+								value="";
+							}else{
+                                                        	value += line[j];
+							}
+                                                }
+                                        }
+
+					if(this->validObjElement(line, "Ks")){
+						int subIndex=0;
+                                                std::string value = "";
+                                                for(int j=3; j<line.length(); j++){
+							if(line[j] == ' ' || line[j] == '\n'){
+								if(subIndex >= 3) continue;
+								this->data.materials[index].material_ks[subIndex] = std::stof(value.c_str());
+								subIndex++;
+								value="";
+							}else{
+                                                        	value += line[j];
+							}
+                                                }
+                                        }
+
+					if(this->validObjElement(line, "Ke")){
+						int subIndex=0;
+                                                std::string value = "";
+                                                for(int j=3; j<line.length(); j++){
+							if(line[j] == ' ' || line[j] == '\n'){
+								if(subIndex >= 3) continue;
+								this->data.materials[index].material_ke[subIndex] = std::stof(value.c_str());
+								subIndex++;
+								value="";
+							}else{
+                                                        	value += line[j];
+							}
+                                                }
+                                        }
+
+					line = "";
+				}
+			}
+		}
+	public:
+		wf_material_collection_t data;
+		int error=0;
+		std::string errorMessage="";
+
+		WavefrontMaterialCollection(){
+                        this->setFileBuffer(NULL, 0);
+                        this->initData();
+                }
+
+                WavefrontMaterialCollection(char *fileBuffer, size_t fileBufferSize){
+                        this->setFileBuffer(fileBuffer, fileBufferSize);
+                        this->initData();
+                }
+		
+		void setFileBuffer(char *fileBuffer, size_t fileBufferSize){
+                        this->fileBuffer = fileBuffer;
+                        this->fileBufferSize = fileBufferSize;
+                }
+
+		bool parse(std::string collectionName, char *fileBuffer, size_t fileBufferSize){
+                        this->setFileBuffer(fileBuffer, fileBufferSize);
+                        return this->parse(collectionName);
+                }
+                bool parse(std::string collectionName){
+			this->data.name=collectionName;	
+			this->countMaterials();
+			this->fetchMaterials();
+			return true;
+		}
+
+		wf_material_t getMaterialByName(std::string name){
+			wf_material_t ret;
+			for(int i=0; i<this->data.materialCount; i++){
+				wf_material_t test = this->data.materials[i];
+				if(test.material_name == name) return test;
+			}
+			return ret;
+		}
+};
+
+class WavefrontObjectCollection{
+	private:
+		bool debugOutput = true;
+
+		size_t fileBufferSize;
+		char *fileBuffer;
+
+		void initData(){
+			this->data.name="";
+			this->data.objectCount = 0;
+			this->data.vertexCount = 0;
+			this->data.textureCount = 0;
+			this->data.normalCount = 0;
+			this->data.faceCount = NULL;
+			this->data.objects = NULL;
+			this->data.vertexData = NULL;
+			this->data.textureData = NULL;
+			this->data.normalData = NULL;
+			this->data.objectFaces = NULL;
+
+		}
+
+		bool validObjElement(std::string line, std::string target){
+			std::string word = "";
+			for(int i=0; i<line.length(); i++){
+				if(line[i] == ' ')break;
+				word += line[i];
+			}
+			if(word == target) return true;
+			return false;
+		}
+
+		void countEntry(size_t *sizeOut, std::string target){
+			sizeOut[0] = 0;
+			std::string line = "";
+			for(int i=0; i<this->fileBufferSize; i++){
+				line += fileBuffer[i];
+				if(fileBuffer[i] == '\n'){
+					if(this->validObjElement(line, target)){
+						sizeOut[0]++;
+					}
+					line = "";
+				}
+			}
+		}
+		
+		size_t countFacePoints(std::string line){
+			size_t ret = 0;
+			for(int i=2; i<line.length(); i++){
+				if(line[i] == ' ' || line[i] == '\n')
+					ret++;
+			}
+			return ret;
+		}
+
+		void fetchPoints(void){
+			std::string line="";
+			int objIdx=-1;
+			int faceIdx=0;
+			for(int i=0; i<this->fileBufferSize; i++){
+				line += this->fileBuffer[i];
+				if(this->fileBuffer[i] == '\n'){
+					if(this->validObjElement(line, "o")){
+						objIdx++;
+						faceIdx=-1;
+					}
+					if(this->validObjElement(line, "f")){
+						faceIdx++;
+						std::string point="";
+						int pointIdx=0;
+						for(int j=2; j<line.length(); j++){
+							point += line[j];
+							if(line[j] == ' ' || line[j] == '\n'){
+								std::string value="";
+								int valIdx = 0;
+								for(int k=0; k<point.length(); k++){
+									if(point[k] == '/' || point[k] == ' ' || point[k] == '\n'){
+										if(valIdx == 0){
+											this->data.objects[objIdx].faces[faceIdx].points[pointIdx].index_vertex = std::stoi(value.c_str());
+										}
+										if(valIdx == 1){
+											this->data.objects[objIdx].faces[faceIdx].points[pointIdx].index_texture = std::stoi(value.c_str());
+										}
+										if(valIdx == 2){
+											this->data.objects[objIdx].faces[faceIdx].points[pointIdx].index_normal = std::stoi(value.c_str());
+										}
+										valIdx++;	
+										value="";
+									}else{
+										value += point[k];
+									}
+								}
+								pointIdx++;
+								point="";
+							}
+						}
+					}
+					
+					line = "";
+				}
+			}
+		}
+
+		void fetchObjectName(int objectIndex){
+			int currentIndex = -1;
+                        std::string line = "";
+                        for(unsigned int i=0; i<this->fileBufferSize; i++){
+                                line += this->fileBuffer[i];
+                                if(this->fileBuffer[i] == '\n' && currentIndex != objectIndex){
+                                        if(this->validObjElement(line, "o")){
+                                                currentIndex++;
+						if(currentIndex == objectIndex){
+							std::string value = "";
+                                                	for(int j=2; j<line.length(); j++){
+                                                	        if(line[j] == '\n') break;
+                                                	        value +=line[j];
+                                                	}
+                                                	this->data.objects[currentIndex].name = value;
+                                                	return;
+						}
+                                        }
+                                        line = "";
+                                }
+			}
+		}
+		void allocateFacePoints(int objectIndex){
+			int currentIndex = -1;
+			int faceIndex =0 ;
+			std::string line = "";
+			for(unsigned int i=0; i<this->fileBufferSize; i++){
+				line += this->fileBuffer[i];
+				if(this->fileBuffer[i] == '\n' && currentIndex != objectIndex){
+					if(this->validObjElement(line, "o")){
+						currentIndex++;
+					}
+					line = "";
+				}else if(this->fileBuffer[i] == '\n' && currentIndex == objectIndex){
+					if(this->validObjElement(line, "o")){
+						return;
+					}
+					if(this->validObjElement(line, "f")){
+						this->data.objects[objectIndex].faces[faceIndex].pointsCount=this->countFacePoints(line);
+						this->data.objects[objectIndex].faces[faceIndex].points = new wf_point_t[this->data.objects[objectIndex].faces[faceIndex].pointsCount];
+						faceIndex++;
+					}
+					line = "";
+				}
+			}
+		}
+
+		void fetchMaterialName(int objectIndex){
+			int currentIndex = -1;
+                        int faceIndex =0 ;
+                        std::string line = "";
+                        for(unsigned int i=0; i<this->fileBufferSize; i++){
+                                line += this->fileBuffer[i];
+                                if(this->fileBuffer[i] == '\n' && currentIndex != objectIndex){
+                                        if(this->validObjElement(line, "o")){
+                                                currentIndex++;
+                                        }
+                                        line = "";
+                                }else if(this->fileBuffer[i] == '\n' && currentIndex == objectIndex){
+					if(this->validObjElement(line, "usemtl")){
+						std::string value = "";
+                                                for(int j=7; j<line.length(); j++){
+                                                        if(line[j] == '\n') break;
+                                                        value +=line[j];
+                                                }
+                                                this->data.objects[currentIndex].material_name = value;
+                                                return;
+					}
+                                        line = "";
+                                }
+                        }
+		}
+		
+		void allocateObjectFaces(int objectIndex){
+			int currentIndex = -1;
+			std::string line = "";
+			for(unsigned int i=0; i<this->fileBufferSize; i++){
+				line += this->fileBuffer[i];
+				if(this->fileBuffer[i] == '\n' && objectIndex != currentIndex){
+					if(this->validObjElement(line, "o")){
+						currentIndex++;
+						if(currentIndex == objectIndex){
+							this->data.objects[currentIndex].faceCount = 0;
+						}
+					}
+					line = "";
+				}else if(this->fileBuffer[i] == '\n' && objectIndex == currentIndex){
+					if(this->validObjElement(line, "o")){
+						break;
+					}
+					if(this->validObjElement(line, "f")){
+						this->data.objects[currentIndex].faceCount++;
+						
+					}
+					line = "";
+				}
+			}
+			this->data.objects[currentIndex].faces = new wf_face_t[this->data.objects[currentIndex].faceCount];
+		}
+		
+		void fetchVertexData(void){
+			int index=0;
+			std::string line="";
+			for(int i=0; i<this->fileBufferSize; i++){
+				line += fileBuffer[i];
+				if(fileBuffer[i] == '\n'){
+					if(this->validObjElement(line, "v")){
+						int subIndex=0;
+						std::string value="";
+						for(int j=2; j<line.length(); j++){
+							if(line[j] == ' ' || line[j] == '\n'){
+								if(subIndex >= 3) continue;
+								if(index >= this->data.vertexCount) return;
+								this->data.vertexData[index][subIndex] = std::stof(value.c_str());
+								value = "";
+								subIndex++;
+							}
+							value += line[j];
+						}
+						index++;
+					}
+					line = "";
+				}
+			}
+		}
+
+		void fetchNormalData(void){
+			int index=0;
+			std::string line="";
+			for(int i=0; i<this->fileBufferSize; i++){
+				line += fileBuffer[i];
+				if(fileBuffer[i] == '\n'){
+					if(this->validObjElement(line, "vn")){
+						int subIndex=0;
+						std::string value="";
+						for(int j=3; j<line.length(); j++){
+							if(line[j] == ' ' || line[j] == '\n'){
+								if(subIndex >= 3) continue;
+								if(index >= this->data.normalCount) return;
+								this->data.normalData[index][subIndex] = std::stof(value.c_str());
+								value = "";
+								subIndex++;
+							}
+							value += line[j];
+						}
+						index++;
+
+					}
+				
+					line = "";
+				}
+			}
+
+		}
+
+		void fetchTextureData(void){
+			int index=0;
+			std::string line="";
+			for(int i=0; i<this->fileBufferSize; i++){
+				line += fileBuffer[i];
+				if(fileBuffer[i] == '\n'){
+					if(this->validObjElement(line, "vt")){
+						int subIndex=0;
+						std::string value="";
+						for(int j=3; j<line.length(); j++){
+							if(line[j] == ' ' || line[j] == '\n'){
+								if(subIndex >= 2) continue;
+								if(index >= this->data.textureCount) return;
+								this->data.textureData[index][subIndex] = std::stof(value.c_str());
+								value = "";
+								subIndex++;
+							}
+							value += line[j];
+						}
+						index++;
+
+					}
+				
+					line = "";
+				}
+			}
+
+		}
+		void setError(const char *msg, int code){
+			this->error = code;
+			this->errorMessage = msg;
+		}
+
+		void fetchMtllib(void){
+			std::string line= "";
+			for(int i=0; i<this->fileBufferSize; i++){
+				line += this->fileBuffer[i];
+				if(this->fileBuffer[i] == '\n'){
+					if(this->validObjElement(line, "mtllib")){
+						std::string value="";
+						for(int j=7; j<line.length(); j++){
+							if(line[j] == '\n') break;
+							value += line[j];
+						}
+						this->data.mtllib = value;
+						return;
+					}
+					line ="";
+				}
+			}
+		}
+	public:
+		wf_collection_t data;
+		WavefrontMaterialCollection material;
+		int error=0;
+		std::string errorMessage="";
+
+		bool failed(void){
+			if(this->error > 0) return true;
+			return false;
+		}
+		std::string getErrorMessage(void){
+			return this->errorMessage;
+		}
+		WavefrontObjectCollection(){
+			this->setFileBuffer(NULL, 0);
+			this->initData();	
+		}
+		
+		WavefrontObjectCollection(char *fileBuffer, size_t fileBufferSize){
+			this->setFileBuffer(fileBuffer, fileBufferSize);
+			this->initData();
+		}
+
+		void setFileBuffer(char *fileBuffer, size_t fileBufferSize){
+			this->fileBuffer = fileBuffer;
+                        this->fileBufferSize = fileBufferSize;
+		}
+
+		bool parse(std::string collectionName, char *fileBuffer, size_t fileBufferSize){
+			this->setFileBuffer(fileBuffer, fileBufferSize);
+			return this->parse(collectionName);
+		}
+		bool parse(std::string collectionName){
+			this->data.name = collectionName;
+			if(this->fileBuffer == NULL){
+				this->setError("WavefrontObjectCollection::parse(void) - file buffer is null.", 1);
+				return false;
+			}
+			if(this->fileBufferSize <= 0){
+				this->setError("WavefrontObjectCollection::parse(void) - file buffer size is too small.", 2);
+				return false;
+			}
+	
+			this->countEntry(&this->data.objectCount, "o");
+			this->data.objects = new wf_object_t[this->data.objectCount];
+			this->data.objectMaterial = new std::string[this->data.objectCount];
+			for(int i=0; i<this->data.objectCount; i++){
+				this->fetchObjectName(i);
+				this->fetchMaterialName(i);
+				this->allocateObjectFaces(i);
+				this->allocateFacePoints(i);
+			}
+			this->fetchPoints();
+
+			this->countEntry(&this->data.vertexCount, "v");
+			this->data.vertexData = new float*[this->data.vertexCount];
+			for(int i=0; i<this->data.vertexCount; i++)
+				this->data.vertexData[i] = new float[3];
+			this->fetchVertexData();
+
+			this->countEntry(&this->data.normalCount, "vn");
+			this->data.normalData = new float*[this->data.normalCount];
+			for(int i=0; i<this->data.normalCount; i++)
+				this->data.normalData[i] = new float[3];
+			this->fetchNormalData();
+
+			this->countEntry(&this->data.textureCount, "vt");
+			this->data.textureData = new float *[this->data.textureCount];
+			for(int i=0; i<this->data.textureCount; i++)
+				this->data.textureData[i] = new float[2];
+			this->fetchTextureData();
+
+			return true;
+		}
+		
+		bool parseMaterial(std::string collectionName, char *fileBuffer, size_t fileBufferSize){
+                        this->setFileBuffer(fileBuffer, fileBufferSize);
+                        return this->parseMaterial(collectionName);
+                }
+		bool parseMaterial(std::string collectionName){
+			if(!this->material.parse(collectionName, this->fileBuffer, this->fileBufferSize)){
+				std::string msg = "WavefrontObjectCollection::parseMaterials(std::string collectionName) - Failed to parse material.\n\t";
+				msg += this->material.errorMessage;
+				this->setError(msg.c_str(), 1);
+				return false;
+			}
+			return true;
+		}
 };

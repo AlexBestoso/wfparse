@@ -1,17 +1,13 @@
-# WavewfrontObjImporter
-This class was built so that you can import .obj and .mtl data into your applications<br>
+# wfparse
 
-The provided program utilizes the importer class to showcase how it works.
+This program parses Wavefront .obj and .mtl files allowing you to easily associate vertecies, texture coords, and normalization coords to faces.
+
+wfparse means WaveFront Parse.
 
 compile running <code>make</code>
 
-sample usage: 
-
-To generate javascript classes for use in WebGl, contains material and formatted vertex data, run:
-<code>./wfparse ./experiment.obj --buf-gen --format=vnt --javascript</code>
-
-To enumerate object data
-<code>./wfparse ./experiment.obj --full-dump</code>
+run the following command to view the manual
+<code>./wfparse help</code>
 
 To use the javascript code, you will need to use a class for the materials. Here is the class:
 
