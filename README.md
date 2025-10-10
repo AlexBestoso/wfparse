@@ -1,4 +1,8 @@
-# WavewfrontObjImporter
+# wfparse
+
+This program parses Wavefront .obj and .mtl files allowing you to easily associate vertecies, texture coords, and normalization coords to faces.
+
+wfparse means WaveFront Parse.
 
 compile running <code>make</code>
 
