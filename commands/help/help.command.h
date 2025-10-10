@@ -4,6 +4,9 @@
 #include <string>
 #include <stdio.h>
 #include <dirent.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
 #include <dlfcn.h>
 #include "../../classes/command.class.h"
 
@@ -56,8 +59,31 @@ class HelpCommand : public Command{
 		void *loadCommandHandle(std::string name){
 			std::string command = "./bin/";
 			command += name;
+			int fd = open(command.c_str(), O_RDONLY);
+        		if(!fd){
+        		        printf("Faild to find SO file.\n");
+        		        return NULL;
+        		}
+        		struct stat st;
+        		if(fstat(fd, &st) == -1){
+        		        printf("Failed to calcualte SO file stats.\n");
+        		        close(fd);
+        		        return NULL;
+        		}
+        		close(fd);
+        		if(st.st_uid != 0 || st.st_gid != 0){
+        		        printf("SO files aren't fully owned by root. This is a security flaw. Refusing to load .so file.\n");
+        		        return NULL;
+        		}
 			void *ret = dlopen(command.c_str(), RTLD_LAZY);
-			if(!ret) return NULL;
+			if(!ret){
+				printf("Failed to open %s\n", command.c_str());
+				const char * dlsym_error = dlerror();
+        			if (dlsym_error) {
+        	    			printf(".SO error : %s\n", dlsym_error);
+        			}
+				return NULL;
+			}
 			return ret;
 		}
 
