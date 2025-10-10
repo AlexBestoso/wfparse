@@ -17,7 +17,6 @@
 
 #include "./classes/command.class.h"
 
-#include "./WavefrontImport.h"
 
 /*
  * .so command functions

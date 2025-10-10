@@ -5,3 +5,4 @@ all:
 	sudo chown root:root ./bin/*
 clean:
 	rm -rf ./bin
+	rm ./wfparse
