@@ -83,7 +83,15 @@ class GenerateCommand : public Command{
 			jsout += "\t\t\t\t"+std::to_string(material.material_ni)+",\n";
 			jsout += "\t\t\t\t"+std::to_string(material.material_d)+",\n";
 			jsout += "\t\t\t\t"+std::to_string(material.material_illum)+",\n";
-			jsout += "\t\t\t\t"+material.material_map_kd+"\n";
+			if(material.material_map_kd.length() > 0 && material.material_map_kd[material.material_map_kd.length()-1] == '\n'){
+				std::string grab = "";
+				for(int i=0; i<material.material_map_kd.length()-1; i++)
+					grab+=material.material_map_kd[i];
+				jsout += "\t\t\t\t'"+grab+"'\n";
+				
+			}else{
+				jsout += "\t\t\t\t'"+material.material_map_kd+"'\n";
+			}
 
 			jsout += "\t\t\t);\n";
 			jsout += "\t\t}catch(e){\n";
