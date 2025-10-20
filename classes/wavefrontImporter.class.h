@@ -12,7 +12,7 @@
 #define WF_FMT_4 10
 #define WF_FMT_KD 11
 
-#include "./obj.class.h"
+#include "./objCollection.class.h"
 
 
 class WavefrontImport{
@@ -28,6 +28,8 @@ class WavefrontImport{
 
 
 		bool debugOutput = true; // enable verbose usage.
+
+		bool importSuccessful=false;
 
 		void setError(const char *msg, int code){
 			this->errorMessage = msg;
@@ -57,36 +59,6 @@ class WavefrontImport{
 			return -1;
 		}	
 		
-		size_t computeVboStride(const char *fmt){
-			size_t cellSize=0;
-			for(int i=0; i<strlen(fmt); i++){
-				switch(this->parseBufferFormat(fmt, i)){
-					case WF_FMT_V:
-					case WF_FMT_N:
-					case WF_FMT_A:
-					case WF_FMT_E:
-					case WF_FMT_3:
-					case WF_FMT_KD:
-						cellSize+=3;
-					break;
-					case WF_FMT_T:
-					case WF_FMT_2:
-						cellSize+=2;
-					break;
-					case WF_FMT_D:
-					case WF_FMT_S:
-					case WF_FMT_1:
-						cellSize+=1;
-					break;
-					case WF_FMT_4:
-						cellSize+=4;
-					break;
-				}
-			}
-			this->vboStride=cellSize;
-			return cellSize;
-		}
-
 		int openAndRead(const char *target, int *fd, char *out, size_t out_size){
 			if(!(fd[0] = open(target, O_RDONLY))){
 				printf("Failed to read '%s'", target);
@@ -131,162 +103,8 @@ class WavefrontImport{
 			return true;
 		}
 
-		void countObjects(){
-			std::string line="";
-			for(int i=0; i<this->objFileSize; i++){
-				line += this->objFileBuffer[i];
-				if(this->objFileBuffer[i] == '\n'){
-					if(line[0] == 'o') this->objCount++;
-					line = "";
-				}
-			}
-		}
-		void countV(){
-			std::string line="";
-			std::string v_data="";
-			if(this->vCache){
-				for(int i=0; i<this->vCount; i++){
-					delete[] this->vCache[i];
-				}
-				delete[] this->vCache;
-			}
-
-			for(int i=0; i<this->objFileSize; i++){
-				line += this->objFileBuffer[i];
-				if(this->objFileBuffer[i] == '\n'){
-					if(line[0] == 'v' && line[1] == ' '){
-						v_data += line;
-						this->vCount++;
-					}
-					line = "";
-				}
-			}
-				
-			this->vCache = new float*[this->vCount];
-			for(int i=0; i<this->vCount; i++)
-				this->vCache[i] = new float[3];
-
-
-			
-			int I=0;
-			line="";
-			for(int i=0; i<v_data.length(); i++){
-				line += v_data[i];
-				if(v_data[i] == '\n'){
-					if(line.length() <= 2) return;
-					std::string val="";
-					int J=0;
-					for(int j=2; j<line.length(); j++){	
-						if((line[j] == ' ' || line[j] == '\n') && J < 3 && val.length() >= 3){
-							this->vCache[I][J] = std::stof(val.c_str());
-							J++;
-							val="";
-							continue;
-						}
-						val+=line[j];
-					}
-					I++;
-					line = "";
-				}
-			}
-		}
-
-		void countVn(){
-			std::string line="";
-			std::string v_data="";
-			if(this->vnCache){
-				for(int i=0; i<this->vnCount; i++){
-					delete[] this->vnCache[i];
-				}
-				delete[] this->vnCache;
-			}
-
-			for(int i=0; i<this->objFileSize; i++){
-				line += this->objFileBuffer[i];
-				if(this->objFileBuffer[i] == '\n'){
-					if(line[0] == 'v' && line[1] == 'n'){
-						v_data+=line;
-						this->vnCount++;
-					}
-					line = "";
-				}
-			}
-			this->vnCache = new float*[this->vnCount];
-			for(int i=0; i<this->vnCount; i++)
-				this->vnCache[i] = new float[3];
-
-			int I=0;
-                        line="";
-                        for(int i=0; i<v_data.length(); i++){
-                                line += v_data[i];
-                                if(v_data[i] == '\n'){
-                                        if(line.length() <= 2) return;
-                                        std::string val="";
-                                        int J=0;
-                                        for(int j=3; j<line.length(); j++){
-                                                if((line[j] == ' ' || line[j] == '\n') && J < 3 && val.length() >= 3){
-                                                        this->vnCache[I][J] = std::stof(val.c_str());
-                                                        J++;
-                                                        val="";
-                                                        continue;
-                                                }
-                                                val+=line[j];
-                                        }
-                                        I++;
-                                        line = "";
-                                }
-                        }
-		}
 		
-		void countVt(){
-			std::string line="";
-			std::string v_data="";
-			if(this->vtCache){
-				for(int i=0; i<this->vtCount; i++){
-					delete[] this->vtCache[i];
-				}
-				delete[] this->vtCache;
-				this->vtCache = NULL;
-			}
-			this->vtCount=0;
-			for(int i=0; i<this->objFileSize; i++){
-				line += this->objFileBuffer[i];
-				if(this->objFileBuffer[i] == '\n'){
-					if(line[0] == 'v' && line[1] == 't') {
-						v_data += line;
-						this->vtCount++;
-					}
-					line = "";
-				}
-			}
-			this->vtCache = new float*[this->vtCount];
-			for(int i=0; i<this->vtCount; i++)
-				this->vtCache[i] = new float[2];
 
-			int I=0;
-                        line="";
-                        for(int i=0; i<v_data.length(); i++){
-                                line += v_data[i];
-                                if(v_data[i] == '\n'){
-                                        if(line.length() <= 2) return;
-                                        std::string val="";
-                                        int J=0;
-                                        for(int j=3; j<line.length(); j++){
-                                                if((line[j] == ' ' || line[j] == '\n') && J < 2 && val.length() >= 3){
-                                                        this->vtCache[I][J] = std::stof(val.c_str());
-                                                        J++;
-                                                        val="";
-                                                        continue;
-                                                }
-                                                val+=line[j];
-                                        }
-                                        I++;
-                                        line = "";
-                                }
-                        }
-			
-		}
-		
 		/*
 		 * Assumes that the object file buffer has been allocated.
 		 * */
@@ -297,6 +115,7 @@ class WavefrontImport{
 				this->setError(msg.c_str(), 1);
 				return false;
 			}
+
 			return true;
 		}
 
@@ -313,6 +132,7 @@ class WavefrontImport{
                         return true;
                 }
 
+		std::string collectionName = "";
 		/*
 		 * Assumes invoking function handled inputs.
 		 * */
@@ -354,6 +174,7 @@ class WavefrontImport{
 				collectionName += this->objFileName[i];
 				if(this->objFileName[i] == '/') collectionName = "";
 			}
+			this->collectionName = collectionName;
 			
 
 			if(!this->processObj(collectionName)){
@@ -364,10 +185,10 @@ class WavefrontImport{
 				return false;
 			}
 
-			if(this->objFileBuffer){
-                                delete[] this->objFileBuffer;
-                        	this->objFileBuffer = NULL;
-                        }
+			//if(this->objFileBuffer){
+                 //               delete[] this->objFileBuffer;
+                  //      	this->objFileBuffer = NULL;
+                   //     }
 
 			// mtl import
 			fd = open(this->mtlFileName.c_str(), O_RDONLY);
@@ -423,166 +244,25 @@ class WavefrontImport{
 			return true;
 		}
 
-		void getVboSize(){
-			this->vboSize = 0;
-			if(this->vboData){
-				delete[] this->vboData;
-				this->vboData=NULL;
-			}
-
-			for(int i=0; i<this->objectCollection.data.objectCount; i++){
-				wf_object_t object = this->objectCollection.data.objects[i];
-				for(int j=0; j<object.faceCount; j++){
-					wf_face_t face = object.faces[j];
-					this->vboSize += this->vboStride*face.pointsCount;
-				}
-			}
-		}
-		void allocateVbo(){
-			if(this->vboSize <= 0) return;
-			if(this->vboData){
-				delete[] this->vboData;
-				this->vboData=NULL;
-			}
-			
-			this->vboData = new float[this->vboSize];
-		}
 	public:
-		
 		WavefrontObjectCollection objectCollection;
-		float *vboData;
-		size_t vboStride=0;
-		size_t vboSize=0;
 
 		int error=0;
 		std::string errorMessage="";
-
-		WavefrontObject waveobj;
-		size_t objCount=0;
-		size_t vCount=0;
-		size_t vnCount=0;
-		size_t vtCount=0;
-		WavefrontObject *objList=NULL;
-		float **vCache=NULL;
-		float **vnCache=NULL;
-		float **vtCache=NULL;
-		float *gl_buffer;
-		size_t gl_buffer_size;
-		size_t gl_stride=0;
 
 		bool failed(void){
 			if(error > 0) return true;
 			return false;
 		}
-
-		void formatVbo(std::string format){
-			int vboIndex=0;
-			for(int j=0; j<this->objectCollection.data.objectCount; j++){
-				wf_object_t object = this->objectCollection.data.objects[j];
-				for(int k=0; k<object.faceCount; k++){
-					wf_face_t face = object.faces[k];
-					for(int a=0; a<face.pointsCount; a++){
-						wf_point_t point = face.points[a];
-						for(int i=0; i<format.length(); i++){
-							if(vboIndex >= vboSize){
-								return;
-							}
-							if(this->vboData == NULL) return;
-
-							switch(this->parseBufferFormat(format.c_str(), i)){
-								case WF_FMT_V:{
-									if(vboIndex+2 >= this->vboSize) continue;
-									int index = point.index_vertex-1;
-									if(index >= this->objectCollection.data.vertexCount) continue;
-									this->vboData[vboIndex] = this->objectCollection.data.vertexData[index][0];
-									vboIndex++;
-									this->vboData[vboIndex] = this->objectCollection.data.vertexData[index][1];
-									vboIndex++;
-									this->vboData[vboIndex] = this->objectCollection.data.vertexData[index][2];
-									vboIndex++;
-        	                        	        		break;
-								}
-        	                        	        	case WF_FMT_N:{
-									if(vboIndex+2 >= this->vboSize) continue;
-									int index = point.index_normal-1;
-									if(index >= this->objectCollection.data.normalCount) continue;
-									this->vboData[vboIndex] = this->objectCollection.data.normalData[index][0];
-									vboIndex++;
-									this->vboData[vboIndex] = this->objectCollection.data.normalData[index][1];
-									vboIndex++;
-									this->vboData[vboIndex] = this->objectCollection.data.normalData[index][2];
-									vboIndex++;
-
-                                		        		break;
-								}
-                                		        	case WF_FMT_T:{
-									if(vboIndex+1 >= this->vboSize) continue;
-									int index = point.index_texture-1;
-									if(index >= this->objectCollection.data.textureCount) continue;
-									this->vboData[vboIndex] = this->objectCollection.data.textureData[index][0];
-									vboIndex++;
-									this->vboData[vboIndex] = this->objectCollection.data.textureData[index][1];
-									vboIndex++;
-                                		        		break;
-								}
-                                		        	case WF_FMT_A:
-                                		        		break;
-                                		        	case WF_FMT_E:
-                                		        		break;
-                                		        	case WF_FMT_3:
-                                		        		break;
-                                		        	case WF_FMT_KD:
-                                		        		break;
-                                		        	case WF_FMT_2:
-                                		        		break;
-                       	  			   		case WF_FMT_D:
-                        			                	break;
-                        			                case WF_FMT_S:
-                        			                	break;
-                        			                case WF_FMT_1:
-                        			                	break;
-                        			                case WF_FMT_4:
-                        			                	break;
-							}
-						}
-					}
-				}
-			}
-		}
-	
-		void compileBuffer(std::string format){
-			this->computeVboStride(format.c_str());
-			this->getVboSize();
-			this->allocateVbo();
-			this->formatVbo(format);
-			
-		}
-
+		
 		void dumpObjFile(){
 			printf("\n===Imported %ld Objects From Collection %s===\n", (long)this->objectCollection.data.objectCount, this->objectCollection.data.name.c_str());
 			for(int i=0; i<this->objectCollection.data.objectCount; i++){
-				wf_object_t object = this->objectCollection.data.objects[i];
-				printf("Object Index %d, %s\n", i, object.name.c_str());
+				WavefrontObject object = this->objectCollection.data.obj[i];
+				printf("Object Index %d, %s\n", i, object.getObjectName().c_str());
         			printf("Object Material %s\n", object.material_name.c_str());
-        			printf("Object has %ld faces\n", (long)object.faceCount);
-				for(int j=0; j<object.faceCount; j++){
-					wf_face_t face = object.faces[j];
-					printf("\nface %d has %ld points\n", j, (long)face.pointsCount);
-					for(int k=0; k<face.pointsCount; k++){
-						//printf("(v:%ld, vt:%ld, vn:%ld)\n", (long)face.points[k].index_vertex, (long)face.points[k].index_texture, (long)face.points[k].index_normal);
-						printf("v:(%f, %f, %f)\tvt:(%f, %f)  \tvn:(%f, %f, %f)\n", 
-						(face.points[k].index_vertex < this->objectCollection.data.vertexCount) ? this->objectCollection.data.vertexData[face.points[k].index_vertex][0] : 0.0, 
-						(face.points[k].index_vertex < this->objectCollection.data.vertexCount) ? this->objectCollection.data.vertexData[face.points[k].index_vertex][1] : 0.0,
-						(face.points[k].index_vertex < this->objectCollection.data.vertexCount) ? this->objectCollection.data.vertexData[face.points[k].index_vertex][2] : 0.0, 
-						(face.points[k].index_texture < this->objectCollection.data.textureCount) ? this->objectCollection.data.textureData[face.points[k].index_texture][0] : 0.0, 
-						(face.points[k].index_texture < this->objectCollection.data.textureCount) ? this->objectCollection.data.textureData[face.points[k].index_texture][1] : 0.0,
-						(face.points[k].index_normal < this->objectCollection.data.normalCount) ? this->objectCollection.data.normalData[face.points[k].index_normal][0] : 0.0,
-						(face.points[k].index_normal < this->objectCollection.data.normalCount) ? this->objectCollection.data.normalData[face.points[k].index_normal][1] : 0.0,
-						(face.points[k].index_normal < this->objectCollection.data.normalCount) ? this->objectCollection.data.normalData[face.points[k].index_normal][2] : 0.0);
-					}
-				}
+        			printf("Object has %ld faces\n", (long)object.getFaceCount());
 
-				printf("\n");
 			}
 		}
 
@@ -635,11 +315,11 @@ class WavefrontImport{
 		 * There should be no spaces between items.
 		 * An empty string will build the format 'vtn'
 		 * */
-		bool genBuffer_format(const char *fmt, int objIndex){
+	/*	bool genBuffer_format(const char *fmt, int objIndex){
 			if(objIndex == -1 || objIndex >= this->objCount) return false;
 			this->objList[objIndex].buildGlBuffer(fmt);
 			return true;
-		}
+		}*/
 
 		
 		std::string getObjectDataByIndex(int idx){
@@ -678,6 +358,22 @@ class WavefrontImport{
 				}
 			}
 			return mtlLine+ret;
+		}
+
+		WavefrontObject getObject(int id){
+			WavefrontObject ret;
+
+			return ret;	
+		}
+
+		int getObjectCount(void){
+			int ret =0;
+
+			return ret;
+		}
+
+		bool sucessful(void){
+			return this->importSuccessful;
 		}
 		
 		bool import(std::string objTarget, std::string mtlTarget){
@@ -718,7 +414,8 @@ class WavefrontImport{
                                 this->setError("WavefrontImport::import(std::string objTartget, std::string mtlTarget) - mtlTarget is not a .mtl file", 3);
                                 return false;
                         }
-			return this->_import();
+			this->importSuccessful = this->_import();
+			return this->importSuccessful;
 		}
 
 		bool import(std::string target){
@@ -746,6 +443,11 @@ class WavefrontImport{
 			target[targetLength-3] = 'm';
 			
 			this->mtlFileName = target;
-			return this->_import();
+			this->importSuccessful = this->_import();
+			return this->importSuccessful;
+		}
+
+		void setExportFormat(std::string v){
+			this->objectCollection.format = v;
 		}
 };
