@@ -66,7 +66,7 @@ class WavefrontObject{
                                         for(int f=0; f<this->exportFormat.length() && dataIndex < this->object.dataSize; f++){
                                                 switch(this->parseBufferFormat(this->exportFormat.c_str(), f)){
                                                         case WF_FMT_V:{
-								int target = face.face.points[j].index_vertex;
+								int target = face.face.points[j].index_vertex-1;
 								if(target >= vertex_size) {
 									printf("vertex index to value overflow.\n");
 									return false;
@@ -78,7 +78,7 @@ class WavefrontObject{
 								break;
 							}
                                                         case WF_FMT_N:{
-                                                        	int target = face.face.points[j].index_normal;
+                                                        	int target = face.face.points[j].index_normal-1;
 								if(target >= normal_size){
 									printf("normal index to value overflow.\n");
 									return false;
@@ -90,7 +90,7 @@ class WavefrontObject{
                                                                 break;
 							}
                                                         case WF_FMT_T:{
-                                                                int target = face.face.points[j].index_texture;
+                                                                int target = face.face.points[j].index_texture-1;
 								if(target >= texture_size){
 									printf("vertex index to value overflow.\n");
 									return false;

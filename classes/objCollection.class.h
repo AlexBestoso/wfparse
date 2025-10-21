@@ -61,7 +61,6 @@ class WavefrontObjectCollection{
 					grabber += line[i];
 				}
 			}
-
 		}
 
 	
@@ -88,6 +87,7 @@ class WavefrontObjectCollection{
 					line += this->fileBuffer[i];
 				}
 			}
+			
 			return true;
 		}
 
