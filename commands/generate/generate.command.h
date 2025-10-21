@@ -21,111 +21,92 @@ class GenerateCommand : public Command{
 	~GenerateCommand() = default;
 
 	bool generateJavascript(){
-		importer.compileBuffer(this->format);	
-		std::string jsout="";
-		std::string makersMark = "/*\n * Made lovingly using wfparse\n * */\n";
+		std::string ret = "";
+		std::string makersMark = "/* * * * * * * * * *\n";
+		makersMark += " *  This file was generated using wfparse.\n";
+		makersMark += " * https://github.com/AlexBestoso/wfparse\n";
+		makersMark += " * plz respect my authoritar\n";
+		makersMark += " * * * * * * * * * */\n";
+		ret = makersMark;
 		WavefrontObjectCollection collection = importer.objectCollection;
 		std::string collectionName = collection.data.name;
 		for(int i=0; i<collectionName.length(); i++){
 			if(collectionName[i] == '.') collectionName[i] = '_';
 		}
-		std::string collectionStride = std::to_string(importer.vboStride);
+
+		ret += "let " + collectionName + " = new BtWebglCollection(Array(), '"+collectionName+"');\n";
 
 		std::string objectNames = "";
 		for(int j=0; j<collection.data.objectCount; j++){
-			wf_object_t object = collection.data.objects[j];
-			if(j == 0) jsout = makersMark;
-			else jsout = "\n"+makersMark;
+			WavefrontObject obj = collection.data.obj[j];
+			wf_object_t o = obj.getObject();
+			int strideSize = obj.calculateStrideSize();
+			std::string collectionStride = std::to_string(strideSize);
+
+			std::string ret_material = "";
 
 			std::string objName = "";
-			for(int k=0; k<object.name.length(); k++){
-				if(object.name[k] == '.'){
+			for(int k=0; k<o.name.length(); k++){
+				if(o.name[k] == '.'){
 					objName += '_';
 				}else{
-					objName += object.name[k];
+					objName += o.name[k];
 				}
-			}				
+			}
 			objectNames += "wf_obj_"+objName+"\n";
 
-			std::string materialName = object.material_name;
+			std::string materialName = o.material_name;
 			wf_material_t material = collection.material.getMaterialByName(materialName);
-
-			jsout += "class WF_OBJ_"+objName+"{\n";
-			jsout += "\tstride=null;\n";
-			jsout += "\tdata=null;\n";
-			jsout += "\tmaterial=null;\n";
-			jsout += "\tname=null;\n";
-			jsout += "\ttexture=null;\n";
-			jsout += "\tconstructor(){\n";
-			jsout += "\t\tthis.name = '"+objName+"';\n";
-			jsout += "\t\ttry{\n";
-			jsout += "\t\t\tthis.material = new BtWebglMaterial(\n";
-			jsout += "\t\t\t\t'"+material.material_name+"',\n";
-
-			jsout += "\t\t\t\t"+std::to_string(material.material_ns)+",\n";
-
-			jsout += "\t\t\t\t["+std::to_string(material.material_ka[0])+", ";
-			jsout += "\t"+std::to_string(material.material_ka[1])+", ";
-			jsout += "\t"+std::to_string(material.material_ka[2])+"],\n";
-
-			jsout += "\t\t\t\t["+std::to_string(material.material_kd[0])+", ";
-			jsout += "\t"+std::to_string(material.material_kd[1])+", ";
-			jsout += "\t"+std::to_string(material.material_kd[2])+"],\n";
-
-			jsout += "\t\t\t\t["+std::to_string(material.material_ks[0])+", ";
-			jsout += "\t"+std::to_string(material.material_ks[1])+", ";
-			jsout += "\t"+std::to_string(material.material_ks[2])+"],\n";
-
-			jsout += "\t\t\t\t["+std::to_string(material.material_ke[0])+", ";
-			jsout += "\t"+std::to_string(material.material_ke[1])+", ";
-			jsout += "\t"+std::to_string(material.material_ke[2])+"],\n";
-
-			jsout += "\t\t\t\t"+std::to_string(material.material_ni)+",\n";
-			jsout += "\t\t\t\t"+std::to_string(material.material_d)+",\n";
-			jsout += "\t\t\t\t"+std::to_string(material.material_illum)+",\n";
+			
+			std::string map="";
 			if(material.material_map_kd.length() > 0 && material.material_map_kd[material.material_map_kd.length()-1] == '\n'){
-				std::string grab = "";
-				for(int i=0; i<material.material_map_kd.length()-1; i++)
-					grab+=material.material_map_kd[i];
-				jsout += "\t\t\t\t'"+grab+"'\n";
-				
-			}else{
-				jsout += "\t\t\t\t'"+material.material_map_kd+"'\n";
-			}
+                                for(int i=0; i<material.material_map_kd.length()-1; i++)
+                                        map+=material.material_map_kd[i];
 
-			jsout += "\t\t\t);\n";
-			jsout += "\t\t}catch(e){\n";
-			jsout += "\t\t\tconsole.log(e+' : Try adding \"defer\" to your script tag for this file if the material class has been defined.');\n";
-			jsout += "\t\t}\n";
-			jsout += "\t\tthis.stride = "+collectionStride+";\n";
-			jsout += "\t\tthis.data = [\n";
-			for(int i=0; i<importer.vboSize; i++){
-				if((i%importer.vboStride) == 0){
-					jsout += "\t\t\t[";
+                        }else{
+                               map = material.material_map_kd;
+                        }
+
+			ret_material += "let mtl_"+material.material_name+" = new BtWebglMaterial('"+material.material_name+"', "+
+				std::to_string(material.material_ns)+
+				", ["+
+					std::to_string(material.material_ka[0])+
+					", "+std::to_string(material.material_ka[1])+
+					", "+std::to_string(material.material_ka[2])+
+				"], ["+
+					std::to_string(material.material_kd[0])+
+					", "+std::to_string(material.material_kd[1])+
+					", "+std::to_string(material.material_kd[2])+
+				"], ["+
+					std::to_string(material.material_ks[0])+
+					", "+std::to_string(material.material_ks[1])+
+					", "+std::to_string(material.material_ks[2])+
+				"], ["+
+					std::to_string(material.material_ke[0])+
+					", "+std::to_string(material.material_ke[1])+
+					", "+std::to_string(material.material_ke[1])+
+				"], "+std::to_string(material.material_ni)+
+				", "+std::to_string(material.material_d)+
+				", "+std::to_string(material.material_illum)+
+			", '"+map+"');\n";
+
+			std::string ret_object = "let "+objName+" = new BtWebglObject('"+objName+"', "+collectionStride+", mtl_"+material.material_name+", [\n\t";
+			for(int i=0; i<o.dataSize; i++){
+				if((i%strideSize) == 0){
+					ret_object += "[";
 				}
-				jsout += std::to_string(importer.vboData[i]) + ", ";
-				if((i%importer.vboStride) == importer.vboStride-1){
-					jsout += "],\n";
+				ret_object += std::to_string(o.data[i]) + ", ";
+				if((i%strideSize) == strideSize-1){
+					ret_object += "],\n\t";
 				}
-			}
-			jsout += "\t\t];\n";
-			jsout += "\t}\n";
-			jsout += "}\n";
-			jsout += "let wf_obj_"+objName+" = new WF_OBJ_"+objName+"();\n";
-			printf("%s\n", jsout.c_str());
+                        }
+			ret_object += "]);\n";
+			
+			ret += ret_material;
+			ret += ret_object;
+			ret += collectionName+".pushObjectCollection("+objName+");\n\n";
 		}
-		std::string line="";
-		jsout = "\nlet "+collectionName+" = [";
-		for(int i=0; i<objectNames.length(); i++){
-			if(objectNames[i] == '\n'){
-				jsout += line + ", ";
-				line = "";
-				continue;
-			}
-			line += objectNames[i];
-		}
-		jsout += "];\n";
-		printf("%s\n", jsout.c_str());
+		printf("%s\n", ret.c_str());
 		return true;
 	}
 
@@ -134,6 +115,7 @@ class GenerateCommand : public Command{
 			printf("No object file provided.\n");
 			return false;
 		}
+		importer.setExportFormat(this->format);
 		if(this->mtlTarget == ""){
 			importer.import(this->target);
 		}else{
