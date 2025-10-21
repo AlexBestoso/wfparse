@@ -185,11 +185,6 @@ class WavefrontImport{
 				return false;
 			}
 
-			//if(this->objFileBuffer){
-                 //               delete[] this->objFileBuffer;
-                  //      	this->objFileBuffer = NULL;
-                   //     }
-
 			// mtl import
 			fd = open(this->mtlFileName.c_str(), O_RDONLY);
                         if(!fd){
@@ -260,7 +255,7 @@ class WavefrontImport{
 			for(int i=0; i<this->objectCollection.data.objectCount; i++){
 				WavefrontObject object = this->objectCollection.data.obj[i];
 				printf("Object Index %d, %s\n", i, object.getObjectName().c_str());
-        			printf("Object Material %s\n", object.material_name.c_str());
+        			printf("Object Material %s\n", object.getMaterialName().c_str());
         			printf("Object has %ld faces\n", (long)object.getFaceCount());
 
 			}

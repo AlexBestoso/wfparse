@@ -2,6 +2,7 @@
 struct Wavefront_Object_Struct{
 	std::string name;
 	std::string material_name;
+	WavefrontMaterialCollection material;
 	size_t faceCount;
 	WavefrontFace *Faces;
 	size_t dataSize;
@@ -143,13 +144,13 @@ class WavefrontObject{
                                 if(this->rawBuffer[i] == '\n'){
                                         if(this->validObjElement(line, "usemtl")){
                                                 for(int j=7; j<line.length(); j++){
-                                                        this->object.material_name= line[i];
+                                                        this->object.material_name += line[j];
                                                 }
                                                 return true;
                                         }
                                         line = "";
                                 }else{
-                                        line+=this->rawBuffer[i];
+                                        line += this->rawBuffer[i];
                                 }
                         }
 			return false;
@@ -192,361 +193,6 @@ class WavefrontObject{
 			
 			return true;
 		}
-
-		bool import_mtl_material(void){
-			this->material_name = "";
-			std::string line="";
-			std::string test="newmtl "+this->object_material+"\n";
-			for(int i=0;i<this->mtl_data_size;i++){
-				line += this->mtl_data[i];
-				if(this->mtl_data[i] == '\n'){
-					if(!strncmp(line.c_str(), test.c_str(), test.length())){
-						for(int j=7; j<line.length()-1; j++)
-							this->material_name += line[j];
-						return true;
-					}
-					line="";
-				}
-			}
-			return false;
-		}	
-
-		bool import_mtl_ns(void){
-			int startIndex=0;
-			std::string test="newmtl "+this->object_material+"\n";
-			std::string line="";
-                        for(int i=0;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(!strncmp(line.c_str(), test.c_str(), test.length())){
-						startIndex=i;
-						break;
-                                        }
-                                        line="";
-                                }
-                        }
-		
-                        line="";
-			for(int i=startIndex; i<this->mtl_data_size;i++){
-				line += this->mtl_data[i];
-				if(this->mtl_data[i] == '\n'){
-					if(line[0] == 'N' && line[1] == 's' && line[2] == ' '){
-						std::string data="";
-						for(int j=3; j<line.length()-1; j++){
-							data += line[j];
-						}
-						this->material_ns = std::stof(data.c_str());
-						return true;
-					}
-					line="";
-				}
-			}
-			return false;
-		}	
-
-		bool import_mtl_ni(void){
-                        int startIndex=0;
-                        std::string test="newmtl "+this->object_material+"\n";
-                        std::string line="";
-                        for(int i=0;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(!strncmp(line.c_str(), test.c_str(), test.length())){
-                                                startIndex=i;
-                                                break;
-                                        }
-                                        line="";
-                                }
-                        }
-
-                        line="";
-                        for(int i=startIndex;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(line[0] == 'N' && line[1] == 'i' && line[2] == ' '){
-                                                std::string data="";
-                                                for(int j=3; j<line.length()-1; j++){
-                                                        data += line[j];
-                                                }
-                                                this->material_ni = std::stof(data.c_str());
-                                                return true;
-                                        }
-                                        line="";
-                                }
-                        }
-                        return false;
-                }
-
-		bool import_mtl_d(void){
-			int startIndex=0;
-                        std::string test="newmtl "+this->object_material+"\n";
-                        std::string line="";
-                        for(int i=0;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(!strncmp(line.c_str(), test.c_str(), test.length())){
-                                                startIndex=i;
-                                                break;
-                                        }
-                                        line="";
-                                }
-                        }
-
-                        line="";
-                        for(int i=startIndex; i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(line[0] == 'd' && line[1] == ' '){
-                                                std::string data="";
-                                                for(int j=2; j<line.length()-1; j++){
-                                                        data += line[j];
-                                                }
-                                                this->material_d = std::stof(data.c_str());
-                                                return true;
-                                        }
-                                        line="";
-                                }
-                        }
-                        return false;
-                }
-
-		bool import_mtl_ka(void){
-                        int startIndex=0;
-                        std::string test="newmtl "+this->object_material+"\n";
-                        std::string line="";
-                        for(int i=0;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(!strncmp(line.c_str(), test.c_str(), test.length())){
-                                                startIndex=i;
-                                                break;
-                                        }
-                                        line="";
-                                }
-                        }
-
-                        line="";
-                        for(int i=startIndex;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(line[0] == 'K' && line[1] == 'a' && line[2] == ' '){
-                                                std::string data="";
-						int J=0;
-                                                for(int j=3; j<line.length(); j++){
-							if(J>= 3){
-								return true;
-							}
-							if(line[j] == ' ' || line[j] == '\n'){
-								
-								this->material_ka[J] = std::stof(data.c_str());
-								data = "";
-								J++;
-								continue;
-							}
-                                                        data += line[j];
-                                                }
-						return true;
-                                        }
-                                        line="";
-                                }
-                        }	
-                        return false;
-                }
-
-		bool import_mtl_kd(void){
-                        int startIndex=0;
-                        std::string test="newmtl "+this->object_material+"\n";
-                        std::string line="";
-                        for(int i=0;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(!strncmp(line.c_str(), test.c_str(), test.length())){
-                                                startIndex=i;
-                                                break;
-                                        }
-                                        line="";
-                                }
-                        }
-
-                        line="";
-                        for(int i=startIndex;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(line[0] == 'K' && line[1] == 'd' && line[2] == ' '){
-                                                std::string data="";
-						int J=0;
-                                                for(int j=3; j<line.length(); j++){
-							if(J>= 3) return true;
-							if(line[j] == ' ' || line[j] == '\n'){
-								this->material_kd[J] = std::stof(data.c_str());
-								data = "";
-								J++;
-								continue;
-							}
-                                                        data += line[j];
-                                                }
-						return true;
-                                        }
-                                        line="";
-                                }
-                        }
-                        return false;
-                }
-
-		bool import_mtl_ks(void){
-                        int startIndex=0;
-                        std::string test="newmtl "+this->object_material+"\n";
-                        std::string line="";
-                        for(int i=0;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(!strncmp(line.c_str(), test.c_str(), test.length())){
-                                                startIndex=i;
-                                                break;
-                                        }
-                                        line="";
-                                }
-                        }
-
-                        line="";
-                        for(int i=startIndex;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(line[0] == 'K' && line[1] == 's' && line[2] == ' '){
-                                                std::string data="";
-						int J=0;
-                                                for(int j=3; j<line.length(); j++){
-							if(J>= 3) return true;
-							if(line[j] == ' ' || line[j] == '\n'){
-								this->material_ks[J] = std::stof(data.c_str());
-								data = "";
-								J++;
-								continue;
-							}
-                                                        data += line[j];
-                                                }
-						return true;
-                                        }
-                                        line="";
-                                }
-                        }
-                        return false;
-                }
-
-		bool import_mtl_ke(void){
-                        int startIndex=0;
-                        std::string test="newmtl "+this->object_material+"\n";
-                        std::string line="";
-                        for(int i=0;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(!strncmp(line.c_str(), test.c_str(), test.length())){
-                                                startIndex=i;
-                                                break;
-                                        }
-                                        line="";
-                                }
-                        }
-
-                        line="";
-                        for(int i=startIndex;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(line[0] == 'K' && line[1] == 'e' && line[2] == ' '){
-                                                std::string data="";
-						int J=0;
-                                                for(int j=3; j<line.length(); j++){
-							if(J>= 3) return true;
-							if(line[j] == ' ' || line[j] == '\n'){
-								this->material_ke[J] = std::stof(data.c_str());
-								data = "";
-								J++;
-								continue;
-							}
-                                                        data += line[j];
-                                                }
-						return true;
-                                        }
-                                        line="";
-                                }
-                        }
-                        return false;
-                }
-
-		bool import_mtl_illum(void){
-                        int startIndex=0;
-                        std::string test="newmtl "+this->object_material+"\n";
-                        std::string line="";
-                        for(int i=0;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(!strncmp(line.c_str(), test.c_str(), test.length())){
-                                                startIndex=i;
-                                                break;
-                                        }
-                                        line="";
-                                }
-                        }
-
-                        line="";
-                        for(int i=startIndex;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-					if(line.length() > 5){
-						std::string cmd = "";
-						for(int j=0; j<5; j++) cmd+=line[j];
-						if(!strncmp(cmd.c_str(), "illum", 5)){
-							std::string data = "";
-							for(int j=6; j<line.length()-1; j++){
-								data += line[j];
-							}
-							this->material_illum = std::stof(data);
-							return true;
-						}
-						return true;
-					}
-                                        line="";
-                                }
-                        }
-                        return false;
-                }
-
-		bool import_mtl_map_kd(void){
-                        int startIndex=0;
-                        std::string test="newmtl "+this->object_material+"\n";
-                        std::string line="";
-                        for(int i=0;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-                                        if(!strncmp(line.c_str(), test.c_str(), test.length())){
-                                                startIndex=i;
-                                                break;
-                                        }
-                                        line="";
-                                }
-                        }
-
-                        line="";
-                        for(int i=startIndex;i<this->mtl_data_size;i++){
-                                line += this->mtl_data[i];
-                                if(this->mtl_data[i] == '\n'){
-					if(line.length() > 6){
-						std::string cmd = "";
-						for(int j=0; j<6; j++) cmd+=line[j];
-						if(!strncmp(cmd.c_str(), "map_Kd", 6)){
-							std::string data = "";
-							for(int j=7; j<line.length()-1; j++){
-								data += line[j];
-							}
-							this->material_map_kd = data;
-							return true;
-						}
-					}
-                                        line="";
-                                }
-                        }
-                        return false;
-                }
 
 		size_t getCellLength(const char *fmt){
 			size_t cellSize=0;
@@ -600,73 +246,10 @@ class WavefrontObject{
 		char *rawBuffer=NULL;
 		size_t rawSize=0;
 
-		std::string object_mtllib="";
-		std::string object_material="";
 	
-		std::string material_name="";
-		float material_ns = 0.0;      // specular highlights
-		float material_ka[3] = {0.0}; // ambient color
-		float material_kd[3] = {0.0}; // diffuse color
-		float material_ks[3] = {0.0}; // specular color
-		float material_ke[3] = {0.0}; 
-		float material_ni = 0.0;      // Optical Density
-		float material_d = 0.0;       // Dissolve
-		float material_illum = 0.0;   // illumination model
-		std::string material_map_kd = ""; // location of texture map
-
-
-		char *mtl_data=NULL;
-		size_t mtl_data_size=0;
-
 		WavefrontObject(void){
 
 		}
-
-
-		bool import_mtl(){
-			if(this->mtl_data == NULL || this->mtl_data_size == 0){
-				if(this->mtl_data){
-					free(this->mtl_data);
-					this->mtl_data=NULL;
-				}
-				this->mtl_data_size = 0;
-				if(this->object_mtllib == ""){
-					printf("no obj mtllib\n");
-					return false;
-				}
-				
-				int fd = open(this->object_mtllib.c_str(), O_RDONLY);
-				if(!fd) return false;
-				struct stat st;
-				if(fstat(fd, &st)){
-					close(fd);
-					return false;
-				}
-				this->mtl_data_size = st.st_size;
-				this->mtl_data = new char[this->mtl_data_size];
-				
-				read(fd, this->mtl_data, this->mtl_data_size);
-				close(fd);
-			}
-
-			this->import_mtl_material();
-			this->import_mtl_ns();
-			this->import_mtl_ka();
-			this->import_mtl_kd();
-			this->import_mtl_ks();
-			this->import_mtl_ke();
-			this->import_mtl_ni();
-			this->import_mtl_d();
-			this->import_mtl_illum();
-			this->import_mtl_map_kd();
-			return true;
-		}
-		bool import_mtl(char *data, size_t data_size){
-			this->mtl_data=data;
-			this->mtl_data_size = data_size;
-			return this->import_mtl();
-		}
-
 
 		bool compile(void){
 			if(this->rawBuffer == NULL){
@@ -709,6 +292,10 @@ class WavefrontObject{
 
 		std::string getObjectName(void){
 			return this->object.name;
+		}
+
+		std::string getMaterialName(void){
+			return this->object.material_name;
 		}
 
 		wf_object_t getObject(void){

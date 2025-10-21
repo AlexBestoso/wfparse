@@ -57,6 +57,7 @@ class GenerateCommand : public Command{
 
 			std::string materialName = o.material_name;
 			wf_material_t material = collection.material.getMaterialByName(materialName);
+			
 			std::string map="";
 			if(material.material_map_kd.length() > 0 && material.material_map_kd[material.material_map_kd.length()-1] == '\n'){
                                 for(int i=0; i<material.material_map_kd.length()-1; i++)
@@ -91,7 +92,6 @@ class GenerateCommand : public Command{
 
 			std::string ret_object = "let "+objName+" = new BtWebglObject('"+objName+"', "+collectionStride+", '"+material.material_name+"', [\n\t";
 			for(int i=0; i<o.dataSize; i++){
-				// importer.getObject(j);
 				if((i%strideSize) == 0){
 					ret_object += "[";
 				}
