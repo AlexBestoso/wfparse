@@ -79,6 +79,7 @@ class WavefrontObjectCollection{
 			for(int i=0, storeIndex=0; i<this->fileBufferSize && storeIndex<this->data.masterVertexStoreSize; i++){
 				if(this->fileBuffer[i] == '\n'){
 					if(this->validObjElement(line, "v")){
+						line+= '\n';
 						this->compileCoreValue(2, 3, storeIndex, line, this->data.masterVertexStore);
 						storeIndex++;
 					}
@@ -104,6 +105,7 @@ class WavefrontObjectCollection{
 			for(int i=0, storeIndex=0; i<this->fileBufferSize && storeIndex<this->data.masterTextureStoreSize; i++){
 				if(this->fileBuffer[i] == '\n'){
 					if(this->validObjElement(line, "vt")){
+						line+= '\n';
 						this->compileCoreValue(3, 2, storeIndex, line, this->data.masterTextureStore);
 						storeIndex++;
 					}
@@ -130,6 +132,7 @@ class WavefrontObjectCollection{
 			for(int i=0, storeIndex=0; i<this->fileBufferSize && storeIndex<this->data.masterNormalStoreSize; i++){
 				if(this->fileBuffer[i] == '\n'){
 					if(this->validObjElement(line, "vn")){
+						line+= '\n';
 						this->compileCoreValue(3, 3, storeIndex, line, this->data.masterNormalStore);
 						storeIndex++;
 					}
