@@ -4,7 +4,9 @@ This program parses Wavefront .obj and .mtl files allowing you to easily associa
 
 wfparse means WaveFront Parse.
 
-compile running <code>make</code>
+compile running <code>make && make install</code>
+
+To prevent shady people from injecting shared objects, the compiled .so files need to be owned by root. Hence the install running chmod. (call me paranoid)
 
 run the following command to view the manual
 <code>./wfparse help</code>

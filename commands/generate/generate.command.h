@@ -16,6 +16,20 @@ class GenerateCommand : public Command{
 	std::string target;
 	std::string mtlTarget;
 	WavefrontImport importer;
+	
+	bool uniqueMaterial(std::string materialCache, std::string target){
+		std::string grabber = "";
+		for(int i=0; i<materialCache.length(); i++){
+			if(materialCache[i] == '\n'){
+				if(grabber == target) return false;
+				grabber = "";
+			}else{
+				grabber += materialCache[i];
+			}
+		}
+		return true;
+	}
+	
 	public:
 	GenerateCommand();
 	~GenerateCommand() = default;
@@ -35,8 +49,10 @@ class GenerateCommand : public Command{
 		}
 
 		ret += "let " + collectionName + " = new BtWebglCollection(Array(), '"+collectionName+"');\n";
+		
 
 		std::string objectNames = "";
+		std::string materialCache = "";
 		for(int j=0; j<collection.data.objectCount; j++){
 			WavefrontObject obj = collection.data.obj[j];
 			wf_object_t o = obj.getObject();
@@ -58,38 +74,39 @@ class GenerateCommand : public Command{
 			std::string materialName = o.material_name;
 			wf_material_t material = collection.material.getMaterialByName(materialName);
 			
-			std::string map="";
-			if(material.material_map_kd.length() > 0 && material.material_map_kd[material.material_map_kd.length()-1] == '\n'){
-                                for(int i=0; i<material.material_map_kd.length()-1; i++)
-                                        map+=material.material_map_kd[i];
+			if(this->uniqueMaterial(materialCache, materialName)){
+				materialCache += materialName + "\n";
+				std::string map="";
+				if(material.material_map_kd.length() > 0 && material.material_map_kd[material.material_map_kd.length()-1] == '\n'){
+	                		for(int i=0; i<material.material_map_kd.length()-1; i++)
+	                		map+=material.material_map_kd[i];
+	                	}else{
+	                		map = material.material_map_kd;
+	                	}
 
-                        }else{
-                               map = material.material_map_kd;
-                        }
-
-			ret_material += "let mtl_"+material.material_name+" = new BtWebglMaterial('"+material.material_name+"', "+
-				std::to_string(material.material_ns)+
-				", ["+
-					std::to_string(material.material_ka[0])+
-					", "+std::to_string(material.material_ka[1])+
-					", "+std::to_string(material.material_ka[2])+
-				"], ["+
-					std::to_string(material.material_kd[0])+
-					", "+std::to_string(material.material_kd[1])+
-					", "+std::to_string(material.material_kd[2])+
-				"], ["+
-					std::to_string(material.material_ks[0])+
-					", "+std::to_string(material.material_ks[1])+
-					", "+std::to_string(material.material_ks[2])+
-				"], ["+
-					std::to_string(material.material_ke[0])+
-					", "+std::to_string(material.material_ke[1])+
-					", "+std::to_string(material.material_ke[1])+
-				"], "+std::to_string(material.material_ni)+
-				", "+std::to_string(material.material_d)+
-				", "+std::to_string(material.material_illum)+
-			", '"+map+"');\n";
-
+				ret_material += "let mtl_"+material.material_name+" = new BtWebglMaterial('"+material.material_name+"', "+
+					std::to_string(material.material_ns)+
+					", ["+
+						std::to_string(material.material_ka[0])+
+						", "+std::to_string(material.material_ka[1])+
+						", "+std::to_string(material.material_ka[2])+
+					"], ["+
+						std::to_string(material.material_kd[0])+
+						", "+std::to_string(material.material_kd[1])+
+						", "+std::to_string(material.material_kd[2])+
+					"], ["+
+						std::to_string(material.material_ks[0])+
+						", "+std::to_string(material.material_ks[1])+
+						", "+std::to_string(material.material_ks[2])+
+					"], ["+
+						std::to_string(material.material_ke[0])+
+						", "+std::to_string(material.material_ke[1])+
+						", "+std::to_string(material.material_ke[1])+
+					"], "+std::to_string(material.material_ni)+
+					", "+std::to_string(material.material_d)+
+					", "+std::to_string(material.material_illum)+
+				", '"+map+"');\n";
+			}
 			std::string ret_object = "let "+objName+" = new BtWebglObject('"+objName+"', "+collectionStride+", mtl_"+material.material_name+", [\n\t";
 			for(int i=0; i<o.dataSize; i++){
 				if((i%strideSize) == 0){
