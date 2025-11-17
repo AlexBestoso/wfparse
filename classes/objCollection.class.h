@@ -231,6 +231,13 @@ class WavefrontObjectCollection{
 		std::string errorMessage="";
 		std::string format="";
 
+		std::string getCollectionName(void){
+			return this->data.name;
+		};
+		void setCollectionName(std::string v){
+			this->data.name = v;
+		}
+
 		bool failed(void){
 			if(this->error > 0) return true;
 			return false;
@@ -356,5 +363,28 @@ class WavefrontObjectCollection{
 				return false;
 			}
 			return true;
+		}
+
+		int getObjectCount(void){
+                        return this->data.objectCount;
+                }
+
+		int getSubObjectCount(void){
+			int ret  = 0;
+			for(int i=0; i<this->getObjectCount(); i++){
+				WavefrontObject obj = this->data.obj[i];
+				ret += obj.getSubObjectCount();
+			}
+			return ret;
+		}
+
+                int getMtlCount(void){
+                        return this->material.data.materialCount;
+                }
+		
+		WavefrontObject getObjectByIndex(int index){
+			if(!(index < this->data.objectCount))
+				throw "Wavefront Object Index out of range.";
+			return this->data.obj[index];
 		}
 };

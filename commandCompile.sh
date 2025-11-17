@@ -5,7 +5,7 @@ echo "for CMD in \$(ls ./commands); do"
 for CMD in $(ls ./commands); do
 	INPUT=$(find "./commands/$CMD/" -name *.cpp)
 	OUTPUT="./bin/$CMD.so"
-	echo "\tg++ -fPIC -shared -o $OUTPUT $INPUT"
-	g++ -g -fPIC -shared -o $OUTPUT $INPUT
+	echo "\tg++ -fPIC -shared -lz -o $OUTPUT $INPUT"
+	g++ $INPUT -g -lz -lcrypto -fPIC -shared -o $OUTPUT 
 done
 echo "done"

@@ -137,7 +137,6 @@ class WavefrontImport{
 		 * Assumes invoking function handled inputs.
 		 * */
 		bool _import(void){
-
 			int fd = open(this->objFileName.c_str(), O_RDONLY);
 			if(!fd){
 				setError("WavefrontImport::_import(void) - Failed to open object file.", 1);
@@ -362,9 +361,11 @@ class WavefrontImport{
 		}
 
 		int getObjectCount(void){
-			int ret =0;
+			return this->objectCollection.data.objectCount;
+		}
 
-			return ret;
+		int getMtlCount(void){
+			return this->objectCollection.material.data.materialCount;
 		}
 
 		bool sucessful(void){

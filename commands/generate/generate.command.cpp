@@ -14,7 +14,7 @@ GenerateCommand::GenerateCommand(){
 	this->setName("generate");
 	this->setDescription("Generate classes and code that enables the graphical object to be used in opengl and webgl.");
 	std::string man = "Usage : generate [gentype] [format] [target] <options>\n\n\t";
-	man += "gentype: options are, --javascript\n\t";
+	man += "gentype: options are, --php-rest, --javascript\n\t";
 	man += "format: formats can be any combination of the following chracters:\n\t\t";
 	man += "v=vertex, only one\n\t\t";
         man += "t=texture, only one\n\t\t";
@@ -42,6 +42,9 @@ GenerateCommand::GenerateCommand(){
 	this->textureOutputDir  = "";
 	this->outputDir = "";
 	this->mapLocOverride = "";
+	this->rawBuffer = NULL;
+	this->convertedBuffer = NULL;
+	this->compressionBuffer = NULL;
 }
 
 bool GenerateCommand::exec(void){

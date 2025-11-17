@@ -15,6 +15,7 @@
 #include <string>
 #include <dlfcn.h>
 
+#include "./classes/compression.class.h"
 #include "./classes/command.class.h"
 
 

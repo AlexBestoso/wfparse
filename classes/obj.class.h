@@ -7,6 +7,11 @@ struct Wavefront_Object_Struct{
 	WavefrontFace *Faces;
 	size_t dataSize;
 	float *data;
+	size_t subObjectCount; // relative to material count
+	int *subOffsetStart;
+	int *subOffsetEnd;
+	std::string *subMtlName;
+	
 };
 typedef Wavefront_Object_Struct wf_object_t;
 
@@ -139,21 +144,73 @@ class WavefrontObject{
 
 		bool compileMaterialName(void){
 			this->object.material_name = "";
+			this->object.subObjectCount = 0;
 			std::string line="";
 			for(int i=0; i<this->rawSize; i++){
                                 if(this->rawBuffer[i] == '\n'){
                                         if(this->validObjElement(line, "usemtl")){
+						this->object.subObjectCount++;
                                                 for(int j=7; j<line.length(); j++){
                                                         this->object.material_name += line[j];
                                                 }
-                                                return true;
+                                       //         return true;
                                         }
                                         line = "";
                                 }else{
                                         line += this->rawBuffer[i];
                                 }
                         }
-			return false;
+			if(this->object.subObjectCount == 0) this->object.subObjectCount++;
+			
+			return true;
+		}
+
+		bool compileSubObjects(void){
+			if(this->object.subObjectCount <= 0) return false;
+			
+			if(this->object.subOffsetStart != NULL) delete[] object.subOffsetStart;
+			object.subOffsetStart = NULL;
+			this->object.subOffsetStart = new int[this->object.subObjectCount];
+			
+			if(this->object.subOffsetEnd != NULL) delete[] object.subOffsetEnd;
+			object.subOffsetEnd = NULL;
+			this->object.subOffsetEnd = new int[this->object.subObjectCount];
+
+			if(this->object.subMtlName != NULL) delete[] this->object.subMtlName;
+			this->object.subMtlName = NULL;
+			this->object.subMtlName = new std::string[this->object.subObjectCount];
+		
+			std::string line="";
+			int faceIndex=0;
+			int subIndex=-1;
+			object.subOffsetStart[0] = -1;
+                        for(int i=0; i<this->rawSize; i++){
+				if(this->rawBuffer[i] == '\n'){
+					if(this->validObjElement(line, "usemtl")){
+						subIndex++;
+						this->object.subMtlName[subIndex] = "";
+						for(int j=7; j<line.length(); j++){
+                                        	               this->object.subMtlName[subIndex] += line[j];
+                                        	}
+						object.subOffsetStart[subIndex] = faceIndex;
+						object.subOffsetEnd[subIndex] = 0;
+					}
+					
+                                        if(this->validObjElement(line, "f")){
+						if(object.subOffsetStart[subIndex] == -1) {
+							object.subOffsetStart[subIndex] = 0;
+							object.subOffsetEnd[subIndex]=0;
+						}
+                                                faceIndex++;
+						object.subOffsetEnd[subIndex]++;
+                                        }
+                                        line = "";
+                                }else{
+                                        line += this->rawBuffer[i];
+                                }
+			}
+			//object.subOffsetStart[subIndex] = faceIndex;
+			return true;
 		}
 
 		bool compileFaces(void){
@@ -263,8 +320,12 @@ class WavefrontObject{
 
 			if(this->compileMaterialName() == false){
 				printf("failed to compile material name.\n");
-			}	
+			}
 
+			if(this->compileSubObjects() == false){
+				printf("Failed to compile sub objects\n");
+				return false;
+			}
 			if(this->compileFaces() == false){
 				printf("Failed to compile faces.\n");
 				return false;
@@ -274,6 +335,10 @@ class WavefrontObject{
 
 		void setExportFormat(std::string fmt){
 			this->exportFormat = fmt;
+		}
+
+		std::string getExportFormat(void){
+			return this->exportFormat;
 		}
 		
 		/*
@@ -306,9 +371,32 @@ class WavefrontObject{
 			return this->object.faceCount;
 		}
 
+		size_t getSubObjectCount(void){
+			return this->object.subObjectCount;
+		}
+
+		std::string getSubObjMtlByIndex(int index){
+			if(index >= this->object.subObjectCount || index < 0) return "";
+			return this->object.subMtlName[index];
+		}
+
 		WavefrontFace getFace(int idx){
 			if(idx >= this->object.faceCount) throw "Object faces not generated.";
 			return this->object.Faces[idx];
+		}
+
+		size_t getSubObjectSizeByIndex(int index){
+			if(index >= this->object.subObjectCount || index < 0) return 0;
+			size_t ret = this->object.subOffsetEnd[index];
+			return ret;
+		}
+		bool exportSubObjectByIndex(int index, float *out, size_t outSize){
+			if(index >= this->object.subObjectCount || index < 0) return false;
+			int max = this->object.subOffsetStart[index]+this->object.subOffsetEnd[index];
+			for(int o=0, i=this->object.subOffsetStart[index]; i<max && o<outSize; i++, o++){
+				out[o] = this->object.data[i];
+			}
+			return true;
 		}
 
 		size_t calculateStrideSize(void){
