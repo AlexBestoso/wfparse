@@ -125,11 +125,6 @@ class Compression{
                                 }
 
                                 have = COMPRESSION_CHUNK - strm.avail_out;
-                                //if(this->readMemory(in, COMPRESSION_CHUNK, out, have, 0) != have){
-                                //        printf("failed to read memory from zlib inflation\n");
-                                //        (void)inflateEnd(&strm);
-                                //        return false;
-                                //}
 				for(int j=0; j<have; j++){
 					grabber += out[j];
 					outsize++;

@@ -1,5 +1,7 @@
 # wfparse
 
+<h1>This Version Still Needs Testing, Compression looks like it works; but decompression needs to be checked.</h1>
+
 This program parses Wavefront .obj and .mtl files allowing you to easily associate vertecies, texture coords, and normalization coords to faces.
 
 wfparse means WaveFront Parse.

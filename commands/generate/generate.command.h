@@ -366,7 +366,7 @@ class GenerateCommand : public Command{
 				data2 += "\t\"ni\":\""+std::to_string(material.material_ni)+"\",\n";
 				data2 += "\t\"d\":\""+std::to_string(material.material_d)+"\",\n";
 				data2 += "\t\"illum\":\""+std::to_string(material.material_illum)+"\",\n";
-				data2 += "\t\"map_kd\":\""+material.material_map_kd+"\"\n";
+				data2 += "\t\"map_kd\":\""+this->processMapName(material.material_map_kd)+"\"\n";
 				data2 += "}";
 				if(!this->writeFile(data2, data2Path)){
 					printf("Failed to store material %ld\n", mtlCount);

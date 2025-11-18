@@ -1,1 +1,2 @@
+[11/15/2025 19:11 EST] - added the --php-rest gentype option to the generate command.
 [11/15/2025 12:04 EST] - Added three new commands; -tt (texture transfer), -ml (map_kd location), and -o (output file). Documentation added to the help menu.
